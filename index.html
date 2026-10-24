@@ -237,6 +237,10 @@
       <div class="field" style="margin-top:10px"><label>睡眠质量</label><div class="stars" id="hQuality"></div></div>
     </div>
     <div class="card">
+      <h2>🙂 心情 <span class="tag" id="hMoodTag">—</span></h2>
+      <div class="field"><label>今天整体心情（1-5）</label><div class="stars" id="hMood"></div></div>
+    </div>
+    <div class="card">
       <h2>🍚 饮食 <span class="tag" id="hMealTag">三餐规律</span></h2>
       <div id="hMeals"></div>
       <div class="field" style="margin-top:6px">
@@ -267,6 +271,10 @@
         <img id="hPhotoImg" alt="照片"><button id="hPhotoDel">✕</button>
       </div>
       <p class="hint" style="margin:8px 0 0;text-align:left">照片只存本机，不上传；压缩后约 12KB。</p>
+    </div>
+    <div class="card">
+      <div class="field"><label>🏆 今天做成的一件小事（选填）</label>
+        <input id="hWin" type="text" maxlength="60" placeholder="例：改完简历投了 3 家"></div>
     </div>
     <div class="card">
       <div class="field"><label>备注（选填）</label>
@@ -380,7 +388,7 @@ function mergeByKey(a, b, keyFn){
 var H_SPORTS = ['无','健身','跑步','球类','骑行','散步','游泳','其他'];
 var H_QUICK = ['胸','背','腿','肩','手臂','核心','有氧'];
 var HEALTH_KEY = 'dsh_health_v2';
-var HEALTH_CSV_HEADER = '日期,入睡时间,起床时间,睡眠小时,睡眠质量1-5,早餐,早餐内容,午餐,午餐内容,晚餐,晚餐内容,饮水杯,运动项目,训练内容,运动分钟,体重kg,精神1-5,备注,照片';
+var HEALTH_CSV_HEADER = '日期,入睡时间,起床时间,睡眠小时,睡眠质量1-5,早餐,早餐内容,午餐,午餐内容,晚餐,晚餐内容,饮水杯,运动项目,训练内容,运动分钟,体重kg,精神1-5,备注,照片,心情1-5,做成的一件事';
 
 function hhmmToMin(s){
   if (!s || s.indexOf(':') < 0) return null;
@@ -408,7 +416,10 @@ function healthRecord(f){
     water: Number(f.water)||0, sport: f.sport || '无',
     trainDetail: (f.trainDetail||'').slice(0,40), minutes: Number(f.minutes)||0,
     weight: (f.weight === '' || f.weight === undefined || f.weight === null) ? '' : round1(f.weight),
-    energy: f.energy || '', note: (f.note||'').slice(0,40), hasPhoto: !!f.hasPhoto
+    energy: f.energy || '', note: (f.note||'').slice(0,40), hasPhoto: !!f.hasPhoto,
+    mood: (f.mood === '' || f.mood === null || f.mood === undefined) ? ''
+          : (isFinite(Number(f.mood)) ? Number(f.mood) : ''),
+    win: (f.win||'').slice(0,60)
   };
 }
 function healthSummarize(list, days){
@@ -428,7 +439,11 @@ function healthSummarize(list, days){
     avgSleep: sleeps.length ? round1(sleeps.reduce(function(a,b){return a+b;},0)/sleeps.length) : null,
     avgStart: starts.length ? minToHHMM(Math.round(starts.reduce(function(a,b){return a+b;},0)/starts.length)) : null,
     minutes: mins, missBreakfast: miss,
-    trainDays: recent.filter(function(e){ return (Number(e.minutes)||0) > 0; }).length
+    trainDays: recent.filter(function(e){ return (Number(e.minutes)||0) > 0; }).length,
+    avgMood: (function(){
+      var m = recent.map(function(e){ return Number(e.mood); }).filter(function(v){ return v > 0; });
+      return m.length ? round1(m.reduce(function(a,b){ return a+b; }, 0) / m.length) : null;
+    })()
   };
 }
 function healthToCsv(list){
@@ -437,7 +452,7 @@ function healthToCsv(list){
     lines.push([e.date,e.sleepStart,e.sleepEnd,e.sleepHours,e.quality,
       e.breakfast,e.breakfastText,e.lunch,e.lunchText,e.dinner,e.dinnerText,
       e.water,e.sport,e.trainDetail,e.minutes,e.weight,e.energy,e.note,
-      e.hasPhoto ? '有' : '无'].map(csvEscape).join(','));
+      e.hasPhoto ? '有' : '无', e.mood, e.win].map(csvEscape).join(','));
   });
   return lines.join('\r\n') + '\r\n';
 }
@@ -453,7 +468,7 @@ function healthParseCsv(text){
       breakfast: v[5] || '吃了', breakfastText: v[6], lunch: v[7] || '吃了', lunchText: v[8],
       dinner: v[9] || '吃了', dinnerText: v[10], water: v[11], sport: v[12],
       trainDetail: v[13], minutes: v[14], weight: v[15], energy: v[16], note: v[17],
-      hasPhoto: (v[18]||'').trim() === '有'
+      hasPhoto: (v[18]||'').trim() === '有', mood: v[19], win: v[20]
     }));
   }
   return out;
@@ -692,14 +707,14 @@ function zipStore(files){
   };
 
   // ══════════ 健康 ══════════
-  var hstate = {records: [], quality: 4, energy: 4, water: 0, sport: '无', photo: null,
+  var hstate = {records: [], quality: 4, energy: 4, mood: 4, water: 0, sport: '无', photo: null, win: '',
     meals: {breakfast:'吃了', lunch:'吃了', dinner:'吃了'},
     mealText: {breakfast:'', lunch:'', dinner:''}};
   function hLoad(){ try { return JSON.parse(localStorage.getItem(HEALTH_KEY) || '[]'); } catch(e){ return []; } }
   function hSave(){ try { localStorage.setItem(HEALTH_KEY, JSON.stringify(hstate.records)); } catch(e){ toast('保存失败：存储已满'); } }
 
   function renderStars(){
-    [['hQuality','quality'],['hEnergy','energy']].forEach(function(p){
+    [['hQuality','quality'],['hEnergy','energy'],['hMood','mood']].forEach(function(p){
       var box = $(p[0]); box.innerHTML = '';
       for (var i = 1; i <= 5; i++){
         (function(v){
@@ -780,6 +795,7 @@ function zipStore(files){
     $('hMealTag').style.color = miss === 0 ? '#1E7B4D' : '#B45F06';
     $('hSportTag').textContent = (Number($('hMinutes').value) || 0) + ' 分钟';
     $('hWaterNum').textContent = hstate.water + ' 杯';
+    $('hMoodTag').textContent = hstate.mood + ' / 5';
   }
   function renderHStats(){
     var s = healthSummarize(hstate.records, 7);
@@ -808,6 +824,7 @@ function zipStore(files){
       if (miss) bits.push('缺 ' + miss + ' 餐');
       if (e.sport && e.sport !== '无') bits.push(e.sport + (e.trainDetail ? '·' + e.trainDetail : '') + ' ' + (e.minutes||0) + 'min');
       if (e.weight !== '') bits.push(e.weight + 'kg');
+      if (e.mood !== '' && e.mood) bits.push('心情 ' + e.mood + '/5');
       var mealsText = [];
       if (e.breakfastText) mealsText.push('早:' + e.breakfastText);
       if (e.lunchText) mealsText.push('午:' + e.lunchText);
@@ -815,6 +832,7 @@ function zipStore(files){
       mid.innerHTML = '<div class="t1">' + e.date + (e.energy ? '　精神 ' + e.energy + '/5' : '') + '</div>' +
         '<div class="t2">' + (bits.join(' · ') || '—') +
         (mealsText.length ? '<br>' + mealsText.join('　') : '') +
+        (e.win ? '<br>🏆 ' + e.win.replace(/</g,'&lt;') : '') +
         (e.note ? '<br>' + e.note.replace(/</g,'&lt;') : '') + '</div>';
       var del = document.createElement('button');
       del.className = 'del'; del.textContent = '✕';
@@ -835,8 +853,8 @@ function zipStore(files){
   function resetHForm(){
     $('hDate').value = todayStr();
     $('hStart').value = '23:30'; $('hEnd').value = '07:30';
-    $('hWeight').value = ''; $('hMinutes').value = ''; $('hTrainDetail').value = ''; $('hNote').value = '';
-    hstate.quality = 4; hstate.energy = 4; hstate.water = 0; hstate.sport = '无'; hstate.photo = null;
+    $('hWeight').value = ''; $('hMinutes').value = ''; $('hTrainDetail').value = ''; $('hNote').value = ''; $('hWin').value = '';
+    hstate.quality = 4; hstate.energy = 4; hstate.mood = 4; hstate.water = 0; hstate.sport = '无'; hstate.photo = null; hstate.win = '';
     hstate.meals = {breakfast:'吃了', lunch:'吃了', dinner:'吃了'};
     hstate.mealText = {breakfast:'', lunch:'', dinner:''};
     renderStars(); renderMeals(); renderSports(); renderQuick(); renderPhoto();
@@ -870,7 +888,8 @@ function zipStore(files){
       dinner: hstate.meals.dinner, dinnerText: hstate.mealText.dinner,
       water: hstate.water, sport: hstate.sport, trainDetail: $('hTrainDetail').value,
       minutes: $('hMinutes').value, weight: $('hWeight').value,
-      energy: hstate.energy, note: $('hNote').value, hasPhoto: !!hstate.photo
+      energy: hstate.energy, note: $('hNote').value, hasPhoto: !!hstate.photo,
+      mood: hstate.mood, win: $('hWin').value
     });
     var pending = hstate.photo;
     hstate.records = mergeByKey(hstate.records, [rec], function(e){
