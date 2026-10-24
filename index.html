@@ -6,408 +6,913 @@
 <meta name="theme-color" content="#1F3864">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="记账">
-<title>随手记 · 极简记账</title>
+<meta name="apple-mobile-web-app-title" content="我的记录">
+<title>我的记录 · 财务 + 健康</title>
 <style>
-  :root{
-    --navy:#1F3864; --blue:#2F5597; --light:#F2F6FC; --line:#DCE4F2;
-    --red:#C00000; --green:#1E7B4D; --grey:#7A869A; --amber:#B45F06;
-  }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;padding:0;background:#EEF2F9;color:#1a2233;
+  html,body{margin:0;padding:0;background:#F1F4F8;color:#16292b;
     font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
   body{padding-bottom:env(safe-area-inset-bottom)}
-  .wrap{max-width:520px;margin:0 auto;padding:0 14px 120px}
-  /* 顶部汇总 */
-  .hero{background:linear-gradient(135deg,#1F3864,#2F5597);color:#fff;padding:calc(16px + env(safe-area-inset-top)) 16px 20px;
-    border-radius:0 0 22px 22px;margin:0 -14px 14px}
-  .hero h1{margin:0 0 14px;font-size:16px;font-weight:600;opacity:.9;letter-spacing:.5px}
+  .view{display:none}
+  .view.active{display:block}
+  .view{--accent:#1F3864;--accent2:#2F5597;--accent-soft:#E8EEF9;--accent-line:#D3DEED}
+  .view--money{--accent:#1F3864;--accent2:#2F5597;--accent-soft:#E8EEF9;--accent-line:#D3DEED}
+  .view--health{--accent:#0F3D3E;--accent2:#1B7A6E;--accent-soft:#E4F2EF;--accent-line:#CFE5E1}
+  .wrap{max-width:520px;margin:0 auto;padding:0 14px 190px}
+  .hero{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
+    padding:calc(16px + env(safe-area-inset-top)) 16px 20px;border-radius:0 0 22px 22px;margin:0 -14px 14px}
+  .hero h1{margin:0 0 12px;font-size:15px;font-weight:600;opacity:.92;letter-spacing:.4px}
   .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-  .stat{background:rgba(255,255,255,.12);border-radius:12px;padding:10px 8px;text-align:center}
-  .stat .k{font-size:11px;opacity:.75;margin-bottom:4px}
-  .stat .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+  .stats.four{grid-template-columns:repeat(4,1fr);gap:7px}
+  .stat{background:rgba(255,255,255,.14);border-radius:12px;padding:9px 4px;text-align:center}
+  .stat .k{font-size:10px;opacity:.78;margin-bottom:3px}
+  .stat .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
   .stat .v.exp{color:#FFC9C9}.stat .v.inc{color:#B7F0CD}
-  /* 表单卡 */
-  .card{background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;
-    box-shadow:0 2px 10px rgba(31,56,100,.07)}
-  .seg{display:flex;background:var(--light);border-radius:12px;padding:4px;margin-bottom:14px}
-  .seg button{flex:1;border:0;background:transparent;padding:10px;border-radius:9px;font-size:15px;
-    font-weight:600;color:var(--grey);transition:.15s}
-  .seg button.on{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12)}
-  .seg button.on.exp{color:var(--red)}.seg button.on.inc{color:var(--green)}
-  .amount{display:flex;align-items:center;border-bottom:2px solid var(--line);padding:6px 2px 10px;margin-bottom:14px}
-  .amount span{font-size:26px;color:var(--grey);margin-right:8px}
-  .amount input{flex:1;border:0;outline:0;font-size:36px;font-weight:700;width:100%;
-    font-variant-numeric:tabular-nums;background:transparent;color:#1a2233}
+  .card{background:#fff;border-radius:16px;padding:14px;margin-bottom:11px;box-shadow:0 2px 10px rgba(20,40,70,.07)}
+  .card h2{margin:0 0 11px;font-size:13px;font-weight:700;color:var(--accent2);display:flex;align-items:center;gap:6px}
+  .card h2 .tag{margin-left:auto;font-size:11px;font-weight:600;color:#7A8B8E}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row.three{grid-template-columns:1fr 1fr 1fr}
+  .field{display:flex;flex-direction:column;gap:5px;min-width:0}
+  .field label{font-size:11px;color:#7A8B8E}
+  input[type=date],input[type=time],input[type=number],input[type=text]{
+    width:100%;min-width:0;border:1px solid var(--accent-line);border-radius:11px;padding:11px;
+    font-size:15px;font-family:inherit;background:#fff;color:#16292b}
+  input[type=number]{font-variant-numeric:tabular-nums}
+  .seg2{display:flex;flex:1;background:var(--accent-soft);border-radius:10px;padding:3px}
+  .seg2 button{flex:1;border:0;background:transparent;border-radius:8px;padding:8px;
+    font-size:13px;color:#7A8B8E;font-family:inherit}
+  .seg2 button.on{background:#fff;color:var(--accent2);font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+  .seg2 button.on.bad{color:#B45F06}
+  .chips{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+  .chip{border:1px solid var(--accent-line);background:#fff;border-radius:10px;padding:9px 2px;
+    font-size:12px;color:#2c4a48;text-align:center;font-family:inherit}
+  .chip.on{background:var(--accent2);border-color:var(--accent2);color:#fff;font-weight:600}
+  .stars{display:flex;gap:6px;margin-top:2px}
+  .star{flex:1;border:1px solid var(--accent-line);background:#fff;border-radius:9px;padding:9px 0;
+    text-align:center;font-size:14px;color:#C6D6D4;font-family:inherit}
+  .star.on{background:var(--accent2);border-color:var(--accent2);color:#fff}
+  .meal{margin-bottom:10px}
+  .meal .top{display:flex;align-items:center;gap:8px}
+  .meal .nm{width:44px;font-size:13px;flex:0 0 44px}
+  .meal input{margin-top:6px;padding:9px 11px;font-size:14px}
+  .meal input:disabled{background:#F6F9F8;color:#B9C7C5}
+  .stepper{display:flex;align-items:center;gap:10px;margin-top:4px}
+  .stepper button{width:36px;height:36px;border:1px solid var(--accent-line);background:#fff;
+    border-radius:10px;font-size:18px;color:var(--accent2);line-height:1;font-family:inherit}
+  .stepper .num{flex:1;text-align:center;font-size:15px;font-weight:700}
+  .mini{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .mini button{border:1px dashed var(--accent-line);background:#fff;border-radius:14px;padding:5px 11px;
+    font-size:12px;color:var(--accent2);font-family:inherit}
+  .sleep-badge{display:flex;align-items:center;justify-content:space-between;
+    background:var(--accent-soft);border-radius:11px;padding:10px 12px;margin-top:10px}
+  .sleep-badge .lb{font-size:12px;color:var(--accent2);font-weight:600}
+  .sleep-badge .vv{font-size:18px;font-weight:800;color:var(--accent)}
+  .amount{display:flex;align-items:center;border-bottom:2px solid var(--accent-line);padding:6px 2px 10px;margin-bottom:12px}
+  .amount span{font-size:24px;color:#7A8B8E;margin-right:8px}
+  .amount input{flex:1;border:0;outline:0;font-size:34px;font-weight:700;width:100%;
+    font-variant-numeric:tabular-nums;background:transparent;color:#16292b}
   .amount input::placeholder{color:#C7D0E0;font-weight:500}
-  .label{font-size:12px;color:var(--grey);margin:0 0 8px}
-  .chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
-  .chip{border:1px solid var(--line);background:#fff;border-radius:11px;padding:11px 4px;
-    font-size:13px;color:#39466b;text-align:center;transition:.12s}
-  .chip.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
-  input[type=date],input[type=text]{width:100%;border:1px solid var(--line);border-radius:11px;
-    padding:12px;font-size:15px;background:#fff;color:#1a2233;font-family:inherit}
-  .row{display:grid;grid-template-columns:1fr 110px;gap:8px;margin-bottom:14px}
-  .save{width:100%;border:0;border-radius:14px;padding:16px;font-size:17px;font-weight:700;
-    color:#fff;background:linear-gradient(135deg,#2F5597,#1F3864);letter-spacing:1px;
-    box-shadow:0 6px 16px rgba(47,85,151,.3)}
+  .photo-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+    border:1px dashed var(--accent-line);background:#FAFDFC;border-radius:12px;padding:14px;
+    font-size:14px;color:var(--accent2);font-weight:600;font-family:inherit}
+  .photo-preview{position:relative;margin-top:10px;display:none}
+  .photo-preview img{width:100%;border-radius:12px;display:block}
+  .photo-preview button{position:absolute;top:8px;right:8px;border:0;background:rgba(0,0,0,.55);
+    color:#fff;border-radius:50%;width:30px;height:30px;font-size:15px;line-height:1}
+  .save{width:100%;border:0;border-radius:14px;padding:15px;font-size:16px;font-weight:700;
+    color:#fff;background:linear-gradient(135deg,var(--accent2),var(--accent));letter-spacing:1px;
+    box-shadow:0 6px 16px rgba(30,60,100,.28);margin-bottom:12px;font-family:inherit}
   .save:active{transform:translateY(1px);opacity:.92}
-  /* 记录列表 */
   .section-title{display:flex;justify-content:space-between;align-items:center;
-    font-size:13px;color:var(--grey);margin:18px 2px 8px}
-  .list{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(31,56,100,.07)}
-  .item{display:flex;align-items:center;padding:13px 14px;border-bottom:1px solid #F0F3FA}
+    font-size:12px;color:#7A8B8E;margin:16px 2px 7px}
+  .list{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(20,40,70,.07)}
+  .item{display:flex;align-items:flex-start;padding:12px 13px;border-bottom:1px solid #EFF3F8;gap:10px}
   .item:last-child{border-bottom:0}
-  .item .ico{width:34px;height:34px;border-radius:10px;background:var(--light);display:flex;
-    align-items:center;justify-content:center;font-size:15px;margin-right:11px;flex:0 0 34px}
+  .item .ico{width:34px;height:34px;border-radius:10px;background:var(--accent-soft);display:flex;
+    align-items:center;justify-content:center;font-size:15px;flex:0 0 34px}
+  .item .thumb{width:54px;height:54px;border-radius:10px;object-fit:cover;flex:0 0 54px;
+    background:var(--accent-soft);display:none}
   .item .mid{flex:1;min-width:0}
-  .item .t1{font-size:14px;font-weight:600;color:#1a2233}
-  .item .t2{font-size:11px;color:var(--grey);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .item .amt{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;margin-left:8px}
-  .item .amt.exp{color:var(--red)}.item .amt.inc{color:var(--green)}
-  .item .del{border:0;background:transparent;color:#C9D1E0;font-size:18px;padding:6px 2px 6px 10px}
-  .empty{padding:34px 16px;text-align:center;color:var(--grey);font-size:13px;line-height:1.8}
-  /* 底部工具条 */
-  .tools{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);
-    backdrop-filter:blur(10px);border-top:1px solid var(--line);
-    padding:10px 14px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;max-width:520px;margin:0 auto}
-  .tools button{flex:1;border:1px solid var(--line);background:#fff;border-radius:11px;
-    padding:11px 4px;font-size:12px;color:#39466b;font-weight:600}
-  .tools button.primary{border-color:var(--blue);color:var(--blue)}
-  .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);
-    background:rgba(26,34,51,.94);color:#fff;font-size:13px;padding:10px 18px;border-radius:20px;
-    opacity:0;transition:.25s;pointer-events:none;z-index:99;max-width:80%;text-align:center}
+  .item .t1{font-size:13px;font-weight:700}
+  .item .t2{font-size:11px;color:#7A8B8E;margin-top:3px;line-height:1.5}
+  .item .amt{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;margin-left:6px;align-self:center}
+  .item .amt.exp{color:#C00000}.item .amt.inc{color:#1E7B4D}
+  .item .del{border:0;background:transparent;color:#C6D6D4;font-size:16px;padding:4px 2px 4px 8px}
+  .empty{padding:30px 16px;text-align:center;color:#7A8B8E;font-size:12px;line-height:1.8}
+  .tools{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom));
+    background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border-top:1px solid #E3EAF3;
+    padding:8px 14px;display:flex;gap:8px;max-width:520px;margin:0 auto;z-index:20}
+  .tools button{flex:1;border:1px solid #E3EAF3;background:#fff;border-radius:11px;padding:10px 4px;
+    font-size:12px;color:#2c4a48;font-weight:600;font-family:inherit}
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;
+    border-top:1px solid #E3EAF3;display:flex;max-width:520px;margin:0 auto;
+    padding-bottom:env(safe-area-inset-bottom)}
+  .tabbar button{flex:1;border:0;background:transparent;padding:9px 2px 10px;font-family:inherit;
+    display:flex;flex-direction:column;align-items:center;gap:2px;color:#98A6B8;font-size:10px}
+  .tabbar button .ic{font-size:19px;line-height:1}
+  .tabbar button.on{color:#1F3864;font-weight:700}
+  .toast{position:fixed;left:50%;bottom:calc(120px + env(safe-area-inset-bottom));
+    transform:translateX(-50%) translateY(16px);background:rgba(22,41,43,.94);color:#fff;
+    font-size:13px;padding:10px 18px;border-radius:20px;opacity:0;transition:.25s;
+    pointer-events:none;z-index:99;max-width:84%;text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-  .hint{font-size:11px;color:var(--grey);text-align:center;margin:10px 0 0;line-height:1.7}
+  .hint{font-size:11px;color:#7A8B8E;text-align:center;margin:10px 0 0;line-height:1.7}
+  .big-btn{display:flex;align-items:center;justify-content:space-between;width:100%;
+    border:1px solid var(--accent-line);background:#fff;border-radius:14px;padding:14px;
+    font-family:inherit;font-size:14px;font-weight:700;color:var(--accent);margin-bottom:9px}
+  .big-btn .sub{font-size:11px;font-weight:400;color:#7A8B8E}
+  .kv{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed #EDF1F6;font-size:13px}
+  .kv:last-child{border-bottom:0}
+  .kv .r{font-weight:700;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="hero">
-    <h1 id="heroTitle">本月</h1>
-    <div class="stats">
-      <div class="stat"><div class="k">支出</div><div class="v exp" id="sumExp">¥0</div></div>
-      <div class="stat"><div class="k">收入</div><div class="v inc" id="sumInc">¥0</div></div>
-      <div class="stat"><div class="k">结余</div><div class="v" id="sumBal">¥0</div></div>
-    </div>
-  </div>
 
-  <div class="card">
-    <div class="seg">
-      <button id="btnExp" class="on exp" data-type="支出">支出</button>
-      <button id="btnInc" data-type="收入">收入</button>
-    </div>
-
-    <div class="amount">
-      <span>¥</span>
-      <input id="amount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00" autocomplete="off">
-    </div>
-
-    <p class="label">分类</p>
-    <div class="chips" id="chips"></div>
-
-    <div class="row">
-      <div>
-        <p class="label">日期</p>
-        <input id="date" type="date">
-      </div>
-      <div>
-        <p class="label">备注（选填）</p>
-        <input id="memo" type="text" placeholder="午饭" maxlength="40">
+<!-- ══════════ 概览 ══════════ -->
+<div class="view view--home active" id="v-home">
+  <div class="wrap">
+    <div class="hero">
+      <h1 id="homeMonth">本月概览</h1>
+      <div class="stats four">
+        <div class="stat"><div class="k">支出</div><div class="v exp" id="hExp">¥0</div></div>
+        <div class="stat"><div class="k">结余</div><div class="v inc" id="hBal">¥0</div></div>
+        <div class="stat"><div class="k">睡眠</div><div class="v" id="hSleep">—</div></div>
+        <div class="stat"><div class="k">运动</div><div class="v" id="hSport">—</div></div>
       </div>
     </div>
 
-    <button class="save" id="save">记 一 笔</button>
+    <button class="big-btn" id="goMoney">
+      <span>💰 记一笔账<br><span class="sub" id="homeMoneySub">今天还没记</span></span>
+      <span style="font-size:20px;color:#A9B8CC">›</span>
+    </button>
+    <button class="big-btn" id="goHealth">
+      <span>🌙 记健康<br><span class="sub" id="homeHealthSub">今天还没记</span></span>
+      <span style="font-size:20px;color:#A9B8CC">›</span>
+    </button>
+
+    <div class="card">
+      <h2>📌 今日提示</h2>
+      <div id="homeTips"></div>
+    </div>
+
+    <div class="card">
+      <h2>📊 本月储蓄率</h2>
+      <div class="kv"><span>收入</span><span class="r" id="hInc">¥0</span></div>
+      <div class="kv"><span>支出</span><span class="r" id="hExp2">¥0</span></div>
+      <div class="kv"><span>结余</span><span class="r" id="hBal2">¥0</span></div>
+      <div class="kv"><span>储蓄率</span><span class="r" id="hRate">—</span></div>
+    </div>
+    <p class="hint">数据都只存在这台手机，不上传。</p>
   </div>
-
-  <div class="section-title"><span>最近记录</span><span id="count">0 笔</span></div>
-  <div class="list" id="list"></div>
-  <p class="hint">数据只存在这台手机里，不上传任何服务器。<br>建议每周点一次「导出」备个份。</p>
 </div>
 
-<div class="tools">
-  <button id="btnExport" class="primary">导出 CSV</button>
-  <button id="btnCopy">复制 CSV</button>
-  <button id="btnImport">导入 CSV</button>
+<!-- ══════════ 记账 ══════════ -->
+<div class="view view--money" id="v-money">
+  <div class="wrap">
+    <div class="hero">
+      <h1 id="mHeroTitle">本月</h1>
+      <div class="stats">
+        <div class="stat"><div class="k">支出</div><div class="v exp" id="mExp">¥0</div></div>
+        <div class="stat"><div class="k">收入</div><div class="v inc" id="mInc">¥0</div></div>
+        <div class="stat"><div class="k">结余</div><div class="v" id="mBal">¥0</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="seg2" style="margin-bottom:12px">
+        <button id="segExp" class="on" data-type="支出">支出</button>
+        <button id="segInc" data-type="收入">收入</button>
+      </div>
+      <div class="amount"><span>¥</span>
+        <input id="mAmount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+      <p class="field" style="margin:0 0 8px"><label>分类</label></p>
+      <div class="chips" id="mChips"></div>
+      <div class="row" style="margin-top:12px">
+        <div class="field"><label>日期</label><input id="mDate" type="date"></div>
+        <div class="field"><label>备注（选填）</label><input id="mMemo" type="text" maxlength="40" placeholder="午饭"></div>
+      </div>
+    </div>
+    <button class="save" id="mSave">记 一 笔</button>
+    <div class="section-title"><span>最近记录</span><span id="mCount">0 笔</span></div>
+    <div class="list" id="mList"></div>
+  </div>
+  <div class="tools" id="moneyTools">
+    <button id="mExport" class="primary">导出 CSV</button>
+    <button id="mCopy">复制 CSV</button>
+    <button id="mImport">导入 CSV</button>
+  </div>
 </div>
-<input type="file" id="fileInput" accept=".csv,text/csv" style="display:none">
+
+<!-- ══════════ 健康 ══════════ -->
+<div class="view view--health" id="v-health">
+  <div class="wrap">
+    <div class="hero">
+      <h1>近 7 天</h1>
+      <div class="stats four">
+        <div class="stat"><div class="k">睡眠</div><div class="v" id="kSleep">—</div></div>
+        <div class="stat"><div class="k">入睡</div><div class="v" id="kStart">—</div></div>
+        <div class="stat"><div class="k">运动</div><div class="v" id="kSport">—</div></div>
+        <div class="stat"><div class="k">缺早餐</div><div class="v" id="kMiss">—</div></div>
+      </div>
+    </div>
+    <div class="card" style="padding:12px 14px">
+      <div class="row">
+        <div class="field"><label>日期</label><input id="hDate" type="date"></div>
+        <div class="field"><label>体重 kg（选填）</label>
+          <input id="hWeight" type="number" inputmode="decimal" step="0.1" placeholder="—"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>😴 睡眠 <span class="tag" id="hWeekday"></span></h2>
+      <div class="row">
+        <div class="field"><label>入睡时间</label><input id="hStart" type="time" value="23:30"></div>
+        <div class="field"><label>起床时间</label><input id="hEnd" type="time" value="07:30"></div>
+      </div>
+      <div class="sleep-badge"><span class="lb">睡眠时长</span><span class="vv" id="hSleepLen">8.0 小时</span></div>
+      <div class="field" style="margin-top:10px"><label>睡眠质量</label><div class="stars" id="hQuality"></div></div>
+    </div>
+    <div class="card">
+      <h2>🍚 饮食 <span class="tag" id="hMealTag">三餐规律</span></h2>
+      <div id="hMeals"></div>
+      <div class="field" style="margin-top:6px">
+        <label>饮水（杯，约 250ml）</label>
+        <div class="stepper">
+          <button id="hWaterMinus">−</button><div class="num" id="hWaterNum">0 杯</div>
+          <button id="hWaterPlus">＋</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>🏃 训练 <span class="tag" id="hSportTag">0 分钟</span></h2>
+      <div class="chips" id="hSports"></div>
+      <div class="field" style="margin-top:10px">
+        <label>练了什么（如：胸+三头 / 5km）</label>
+        <input id="hTrainDetail" type="text" maxlength="40" placeholder="写下具体项目">
+        <div class="mini" id="hQuick"></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="field"><label>时长（分钟）</label>
+          <input id="hMinutes" type="number" inputmode="numeric" step="5" min="0" placeholder="0"></div>
+        <div class="field"><label>精神（1-5）</label><div class="stars" id="hEnergy"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>📷 拍照 <span class="tag">选填</span></h2>
+      <button class="photo-btn" id="hPhotoBtn">📷 拍一张（或从相册选）</button>
+      <div class="photo-preview" id="hPhotoPreview">
+        <img id="hPhotoImg" alt="照片"><button id="hPhotoDel">✕</button>
+      </div>
+      <p class="hint" style="margin:8px 0 0;text-align:left">照片只存本机，不上传；压缩后约 12KB。</p>
+    </div>
+    <div class="card">
+      <div class="field"><label>备注（选填）</label>
+        <input id="hNote" type="text" maxlength="40" placeholder="今天感觉…"></div>
+    </div>
+    <button class="save" id="hSave">保 存 今 天</button>
+    <div class="section-title"><span>最近记录</span><span id="hCount">0 条</span></div>
+    <div class="list" id="hList"></div>
+  </div>
+  <div class="tools" id="healthTools">
+    <button id="hExport" class="primary">导出 CSV</button>
+    <button id="hCopy">复制 CSV</button>
+    <button id="hImport">导入 CSV</button>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <button class="on" data-view="home"><span class="ic">🏠</span>概览</button>
+  <button data-view="money"><span class="ic">💰</span>记账</button>
+  <button data-view="health"><span class="ic">🌙</span>健康</button>
+</nav>
+
+<input type="file" id="mFile" accept=".csv,text/csv" style="display:none">
+<input type="file" id="hFile" accept=".csv,text/csv" style="display:none">
+<input type="file" id="hPhotoInput" accept="image/*" capture="environment" style="display:none">
 <div class="toast" id="toast"></div>
 
 <script>
 // CORE_START
-var TYPES = ['支出', '收入'];
-var CATS = {
-  '支出': ['餐饮', '交通', '住宿', '学习', '娱乐', '通讯', '医疗', '购物', '其他支出'],
-  '收入': ['兼职', '奖学金', '工资', '红包', '其他收入']
-};
-var ICONS = {'餐饮':'🍚','交通':'🚌','住宿':'🏠','学习':'📚','娱乐':'🎮','通讯':'📱',
-  '医疗':'💊','购物':'🛍️','其他支出':'📦','兼职':'💼','奖学金':'🏆','工资':'💰','红包':'🧧','其他收入':'✨'};
-var STORE_KEY = 'dsh_ledger_v1';
-
+// ══════════ 通用工具 ══════════
 function pad2(n){ return (n < 10 ? '0' : '') + n; }
-function todayStr(d){
-  d = d || new Date();
-  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
-}
-function monthOf(dateStr){ return String(dateStr).slice(0, 7); }
-function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-function round2(n){ return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
-
-function makeEntry(type, category, amount, date, memo){
-  return {
-    id: uid(),
-    date: date || todayStr(),
-    type: type === '收入' ? '收入' : '支出',
-    category: category || '其他支出',
-    amount: round2(Math.abs(Number(amount) || 0)),
-    memo: (memo || '').slice(0, 40)
-  };
-}
-
-function addEntry(list, entry){ return list.concat([entry]); }
-function delEntry(list, id){ return list.filter(function(e){ return e.id !== id; }); }
-
-function summarize(list, month){
-  var inc = 0, exp = 0;
-  for (var i = 0; i < list.length; i++){
-    var e = list[i];
-    if (month && monthOf(e.date) !== month) continue;
-    if (e.type === '收入') inc += e.amount; else exp += e.amount;
-  }
-  return {income: round2(inc), expense: round2(exp), balance: round2(inc - exp)};
-}
-
+function todayStr(d){ d = d || new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function round1(n){ return Math.round((Number(n)+Number.EPSILON)*10)/10; }
+function round2(n){ return Math.round((Number(n)+Number.EPSILON)*100)/100; }
 function csvEscape(v){
-  v = String(v == null ? '' : v);
-  if (/[",\n\r]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
-  return v;
+  v = String(v === null || v === undefined ? '' : v);
+  return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
 }
-
-function toCsv(list){
-  var lines = ['日期,类型,分类,金额,支付方式,备注'];
-  var sorted = list.slice().sort(function(a, b){ return a.date < b.date ? -1 : 1; });
-  for (var i = 0; i < sorted.length; i++){
-    var e = sorted[i];
-    lines.push([e.date, e.type, e.category, e.amount, '', e.memo].map(csvEscape).join(','));
-  }
-  return lines.join('\r\n') + '\r\n';
-}
-
-// 支持带引号的简单 CSV 解析
-function parseCsv(text){
+function parseCsvRows(text){
   text = String(text || '').replace(/^\uFEFF/, '');
   var rows = [], row = [], cur = '', inQ = false;
   for (var i = 0; i < text.length; i++){
     var c = text[i];
     if (inQ){
-      if (c === '"'){
-        if (text[i + 1] === '"'){ cur += '"'; i++; } else { inQ = false; }
-      } else { cur += c; }
+      if (c === '"'){ if (text[i+1] === '"'){ cur += '"'; i++; } else inQ = false; }
+      else cur += c;
     } else {
       if (c === '"') inQ = true;
       else if (c === ','){ row.push(cur); cur = ''; }
       else if (c === '\n'){ row.push(cur); rows.push(row); row = []; cur = ''; }
-      else if (c === '\r'){ /* skip */ }
-      else cur += c;
+      else if (c !== '\r') cur += c;
     }
   }
-  row.push(cur);
-  rows.push(row);
+  row.push(cur); rows.push(row);
+  return rows;
+}
 
-  var out = [];
+// ══════════ 记账 ══════════
+var MONEY_TYPES = ['支出','收入'];
+var MONEY_CATS = {'支出':['餐饮','交通','住宿','学习','娱乐','通讯','医疗','购物','其他支出'],
+                  '收入':['兼职','奖学金','工资','红包','其他收入']};
+var MONEY_ICONS = {'餐饮':'🍚','交通':'🚌','住宿':'🏠','学习':'📚','娱乐':'🎮','通讯':'📱',
+  '医疗':'💊','购物':'🛍️','其他支出':'📦','兼职':'💼','奖学金':'🏆','工资':'💰','红包':'🧧','其他收入':'✨'};
+var MONEY_KEY = 'dsh_ledger_v1';
+var MONEY_CSV_HEADER = '日期,类型,分类,金额,支付方式,备注';
+
+function moneyRecord(type, cat, amount, date, memo){
+  return { id: uid(), date: date || todayStr(), type: type === '收入' ? '收入' : '支出',
+    category: cat || '其他支出', amount: round2(Math.abs(Number(amount)||0)), memo: (memo||'').slice(0,40) };
+}
+function moneySummarize(list, month){
+  var inc = 0, exp = 0;
+  for (var i = 0; i < list.length; i++){
+    var e = list[i];
+    if (month && e.date.slice(0,7) !== month) continue;
+    if (e.type === '收入') inc += e.amount; else exp += e.amount;
+  }
+  return { income: round2(inc), expense: round2(exp), balance: round2(inc - exp) };
+}
+function moneyToCsv(list){
+  var lines = [MONEY_CSV_HEADER];
+  list.slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; }).forEach(function(e){
+    lines.push([e.date,e.type,e.category,e.amount,'',e.memo].map(csvEscape).join(','));
+  });
+  return lines.join('\r\n') + '\r\n';
+}
+function moneyParseCsv(text){
+  var rows = parseCsvRows(text), out = [];
   for (var r = 1; r < rows.length; r++){
-    var cells = rows[r];
-    if (!cells || cells.length < 4) continue;
-    var date = (cells[0] || '').trim();
-    var type = (cells[1] || '').trim();
-    var cat = (cells[2] || '').trim();
-    var amt = parseFloat(String(cells[3] || '').replace(/[¥,\s]/g, ''));
-    if (!date || !isFinite(amt) || (type !== '支出' && type !== '收入')) continue;
-    out.push(makeEntry(type, cat, amt, date, (cells[5] || '').trim()));
+    var v = rows[r];
+    if (!v || v.length < 4) continue;
+    var date = (v[0]||'').trim(), type = (v[1]||'').trim();
+    var amt = parseFloat(String(v[3]||'').replace(/[¥,\s]/g,''));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || (type !== '支出' && type !== '收入') || !isFinite(amt)) continue;
+    out.push(moneyRecord(type, (v[2]||'').trim(), amt, date, (v[5]||'').trim()));
+  }
+  return out;
+}
+function mergeByKey(a, b, keyFn){
+  var seen = {}, out = [], all = a.concat(b);
+  for (var i = 0; i < all.length; i++){
+    var k = keyFn(all[i]);
+    if (seen[k]) continue;
+    seen[k] = 1; out.push(all[i]);
   }
   return out;
 }
 
-// 按「日期+类型+分类+金额+备注」去重合并
-function mergeEntries(a, b){
-  var seen = {}, out = [];
-  var all = a.concat(b);
-  for (var i = 0; i < all.length; i++){
-    var e = all[i];
-    var k = [e.date, e.type, e.category, e.amount, e.memo].join('|');
-    if (seen[k]) continue;
-    seen[k] = 1;
-    out.push(e);
+// ══════════ 健康 ══════════
+var H_SPORTS = ['无','健身','跑步','球类','骑行','散步','游泳','其他'];
+var H_QUICK = ['胸','背','腿','肩','手臂','核心','有氧'];
+var HEALTH_KEY = 'dsh_health_v2';
+var HEALTH_CSV_HEADER = '日期,入睡时间,起床时间,睡眠小时,睡眠质量1-5,早餐,早餐内容,午餐,午餐内容,晚餐,晚餐内容,饮水杯,运动项目,训练内容,运动分钟,体重kg,精神1-5,备注,照片';
+
+function hhmmToMin(s){
+  if (!s || s.indexOf(':') < 0) return null;
+  var p = s.split(':'); var h = parseInt(p[0],10), m = parseInt(p[1],10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h*60 + m;
+}
+function minToHHMM(m){ m = ((Math.round(m)%1440)+1440)%1440; return pad2(Math.floor(m/60))+':'+pad2(m%60); }
+function calcSleep(start, end){
+  var a = hhmmToMin(start), b = hhmmToMin(end);
+  if (a === null || b === null) return null;
+  var d = b - a;
+  if (d <= 0) d += 1440;
+  return round1(d/60);
+}
+function healthRecord(f){
+  var sleep = calcSleep(f.sleepStart, f.sleepEnd);
+  return {
+    id: uid(), date: f.date || todayStr(),
+    sleepStart: f.sleepStart || '', sleepEnd: f.sleepEnd || '',
+    sleepHours: sleep === null ? '' : sleep, quality: f.quality || '',
+    breakfast: f.breakfast || '吃了', breakfastText: (f.breakfastText||'').slice(0,40),
+    lunch: f.lunch || '吃了', lunchText: (f.lunchText||'').slice(0,40),
+    dinner: f.dinner || '吃了', dinnerText: (f.dinnerText||'').slice(0,40),
+    water: Number(f.water)||0, sport: f.sport || '无',
+    trainDetail: (f.trainDetail||'').slice(0,40), minutes: Number(f.minutes)||0,
+    weight: (f.weight === '' || f.weight === undefined || f.weight === null) ? '' : round1(f.weight),
+    energy: f.energy || '', note: (f.note||'').slice(0,40), hasPhoto: !!f.hasPhoto
+  };
+}
+function healthSummarize(list, days){
+  var today = new Date();
+  var recent = list.filter(function(e){
+    var d = new Date(e.date + 'T00:00:00');
+    var diff = (today - d) / 86400000;
+    return diff >= 0 && diff < days;
+  });
+  var sleeps = recent.map(function(e){ return Number(e.sleepHours); }).filter(function(v){ return v > 0; });
+  var mins = recent.reduce(function(s,e){ return s + (Number(e.minutes)||0); }, 0);
+  var miss = recent.filter(function(e){ return e.breakfast !== '吃了'; }).length;
+  var starts = recent.map(function(e){ return hhmmToMin(e.sleepStart); })
+    .filter(function(v){ return v !== null; }).map(function(m){ return m < 720 ? m + 1440 : m; });
+  return {
+    n: recent.length,
+    avgSleep: sleeps.length ? round1(sleeps.reduce(function(a,b){return a+b;},0)/sleeps.length) : null,
+    avgStart: starts.length ? minToHHMM(Math.round(starts.reduce(function(a,b){return a+b;},0)/starts.length)) : null,
+    minutes: mins, missBreakfast: miss,
+    trainDays: recent.filter(function(e){ return (Number(e.minutes)||0) > 0; }).length
+  };
+}
+function healthToCsv(list){
+  var lines = [HEALTH_CSV_HEADER];
+  list.slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; }).forEach(function(e){
+    lines.push([e.date,e.sleepStart,e.sleepEnd,e.sleepHours,e.quality,
+      e.breakfast,e.breakfastText,e.lunch,e.lunchText,e.dinner,e.dinnerText,
+      e.water,e.sport,e.trainDetail,e.minutes,e.weight,e.energy,e.note,
+      e.hasPhoto ? '有' : '无'].map(csvEscape).join(','));
+  });
+  return lines.join('\r\n') + '\r\n';
+}
+function healthParseCsv(text){
+  var rows = parseCsvRows(text), out = [];
+  for (var r = 1; r < rows.length; r++){
+    var v = rows[r];
+    if (!v || v.length < 3) continue;
+    var date = (v[0]||'').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    out.push(healthRecord({
+      date: date, sleepStart: (v[1]||'').trim(), sleepEnd: (v[2]||'').trim(), quality: v[4],
+      breakfast: v[5] || '吃了', breakfastText: v[6], lunch: v[7] || '吃了', lunchText: v[8],
+      dinner: v[9] || '吃了', dinnerText: v[10], water: v[11], sport: v[12],
+      trainDetail: v[13], minutes: v[14], weight: v[15], energy: v[16], note: v[17],
+      hasPhoto: (v[18]||'').trim() === '有'
+    }));
   }
-  out.sort(function(x, y){ return x.date < y.date ? 1 : (x.date > y.date ? -1 : 0); });
   return out;
+}
+function targetSize(w, h, maxSide){
+  if (w <= maxSide && h <= maxSide) return { w: w, h: h };
+  var s = maxSide / Math.max(w, h);
+  return { w: Math.round(w*s), h: Math.round(h*s) };
+}
+function photosReady(){ return typeof indexedDB !== 'undefined'; }
+function idbOpen(){
+  return new Promise(function(res, rej){
+    var req = indexedDB.open('dsh_health_media', 2);
+    req.onupgradeneeded = function(){ if (!req.result.objectStoreNames.contains('photos')) req.result.createObjectStore('photos'); };
+    req.onsuccess = function(){ res(req.result); };
+    req.onerror = function(){ rej(req.error); };
+  });
+}
+function idbPut(key, val){
+  return idbOpen().then(function(db){ return new Promise(function(res, rej){
+    var tx = db.transaction('photos','readwrite'); tx.objectStore('photos').put(val, key);
+    tx.oncomplete = function(){ res(true); }; tx.onerror = function(){ rej(tx.error); };
+  }); });
+}
+function idbGet(key){
+  return idbOpen().then(function(db){ return new Promise(function(res){
+    var tx = db.transaction('photos','readonly'); var r = tx.objectStore('photos').get(key);
+    r.onsuccess = function(){ res(r.result || null); }; r.onerror = function(){ res(null); };
+  }); });
+}
+function idbDel(key){
+  return idbOpen().then(function(db){ return new Promise(function(res){
+    var tx = db.transaction('photos','readwrite'); tx.objectStore('photos').delete(key);
+    tx.oncomplete = function(){ res(true); }; tx.onerror = function(){ res(false); };
+  }); });
 }
 // CORE_END
 
 (function(){
-  var state = {entries: [], type: '支出', category: '餐饮'};
-
   function $(id){ return document.getElementById(id); }
-  function money(n){
-    var s = Math.abs(n).toFixed(2).replace(/\.00$/, '');
-    return '¥' + s;
-  }
+  var toastT;
   function toast(msg){
-    var t = $('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    clearTimeout(toast._tm);
-    toast._tm = setTimeout(function(){ t.classList.remove('show'); }, 1800);
+    var t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.remove('show'); }, 1900);
+  }
+  function download(name, text){
+    var blob = new Blob(['\uFEFF' + text], {type:'text/csv;charset=utf-8'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+  function copyText(text, okMsg){
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ toast(okMsg); }, function(){ toast('复制失败，请用导出'); });
+    } else {
+      var ta = document.createElement('textarea'); ta.value = text;
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); toast(okMsg); } catch(e){ toast('复制失败'); }
+      ta.remove();
+    }
   }
 
-  function load(){
-    try {
-      var raw = localStorage.getItem(STORE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (e){ return []; }
+  // ══════════ 视图切换 ══════════
+  var VIEWS = {home:'v-home', money:'v-money', health:'v-health'};
+  var current = 'home';
+  function show(name){
+    current = name;
+    Object.keys(VIEWS).forEach(function(k){ $(VIEWS[k]).classList.toggle('active', k === name); });
+    document.querySelectorAll('.tabbar button').forEach(function(b){ b.classList.toggle('on', b.dataset.view === name); });
+    window.scrollTo(0, 0);
+    if (name === 'home') renderHome();
   }
-  function save(){
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(state.entries)); }
-    catch (e){ toast('保存失败：存储空间不足'); }
-  }
+  document.querySelectorAll('.tabbar button').forEach(function(b){
+    b.onclick = function(){ show(b.dataset.view); };
+  });
+  $('goMoney').onclick = function(){ show('money'); };
+  $('goHealth').onclick = function(){ show('health'); };
 
-  function renderChips(){
-    var box = $('chips');
-    box.innerHTML = '';
-    CATS[state.type].forEach(function(cat){
+  // ══════════ 记账 ══════════
+  var mstate = {records: [], type: '支出', category: '餐饮'};
+  function mLoad(){ try { return JSON.parse(localStorage.getItem(MONEY_KEY) || '[]'); } catch(e){ return []; } }
+  function mSave(){ try { localStorage.setItem(MONEY_KEY, JSON.stringify(mstate.records)); } catch(e){ toast('保存失败：存储已满'); } }
+
+  function renderMChips(){
+    var box = $('mChips'); box.innerHTML = '';
+    MONEY_CATS[mstate.type].forEach(function(cat){
       var b = document.createElement('button');
-      b.className = 'chip' + (cat === state.category ? ' on' : '');
+      b.className = 'chip' + (cat === mstate.category ? ' on' : '');
       b.textContent = cat;
-      b.onclick = function(){ state.category = cat; renderChips(); };
+      b.onclick = function(){ mstate.category = cat; renderMChips(); };
       box.appendChild(b);
     });
   }
-
-  function renderStats(){
-    var m = todayStr().slice(0, 7);
-    var s = summarize(state.entries, m);
-    $('heroTitle').textContent = m + ' 本月';
-    $('sumExp').textContent = money(s.expense);
-    $('sumInc').textContent = money(s.income);
-    $('sumBal').textContent = (s.balance < 0 ? '-' : '') + money(s.balance);
+  function renderMStats(){
+    var m = todayStr().slice(0,7);
+    var s = moneySummarize(mstate.records, m);
+    $('mHeroTitle').textContent = m + ' 本月';
+    $('mExp').textContent = '¥' + s.expense.toFixed(2).replace(/\.00$/, '');
+    $('mInc').textContent = '¥' + s.income.toFixed(2).replace(/\.00$/, '');
+    $('mBal').textContent = (s.balance < 0 ? '-' : '') + '¥' + Math.abs(s.balance).toFixed(2).replace(/\.00$/, '');
   }
-
-  function renderList(){
-    var box = $('list');
-    var list = state.entries.slice().sort(function(a, b){
-      return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0);
-    });
-    $('count').textContent = list.length + ' 笔';
+  function renderMList(){
+    var box = $('mList');
+    var list = mstate.records.slice().sort(function(a,b){ return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });
+    $('mCount').textContent = list.length + ' 笔';
     if (!list.length){
-      box.innerHTML = '<div class="empty">还没有记录。<br>在上面输金额、选分类，点「记一笔」。</div>';
+      box.innerHTML = '<div class="empty">还没有记录。<br>上面输金额、选分类，点「记一笔」。</div>';
       return;
     }
     box.innerHTML = '';
     list.slice(0, 60).forEach(function(e){
-      var row = document.createElement('div');
-      row.className = 'item';
+      var row = document.createElement('div'); row.className = 'item';
       var sign = e.type === '收入' ? '+' : '-';
-      row.innerHTML =
-        '<div class="ico">' + (ICONS[e.category] || '📌') + '</div>' +
+      row.innerHTML = '<div class="ico">' + (MONEY_ICONS[e.category] || '📌') + '</div>' +
         '<div class="mid"><div class="t1">' + e.category + '</div>' +
-        '<div class="t2">' + e.date + (e.memo ? ' · ' + e.memo.replace(/</g, '&lt;') : '') + '</div></div>' +
-        '<div class="amt ' + (e.type === '收入' ? 'inc' : 'exp') + '">' + sign + money(e.amount) + '</div>';
+        '<div class="t2">' + e.date + (e.memo ? ' · ' + e.memo.replace(/</g,'&lt;') : '') + '</div></div>' +
+        '<div class="amt ' + (e.type === '收入' ? 'inc' : 'exp') + '">' + sign + '¥' + e.amount + '</div>';
       var del = document.createElement('button');
-      del.className = 'del';
-      del.textContent = '✕';
+      del.className = 'del'; del.textContent = '✕';
       del.onclick = function(){
-        if (confirm('删除这条记录？\n' + e.date + ' ' + e.category + ' ' + e.type + ' ' + money(e.amount))){
-          state.entries = delEntry(state.entries, e.id);
-          save(); renderAll();
-        }
+        if (!confirm('删除 ' + e.date + ' ' + e.category + ' ' + e.type + ' ¥' + e.amount + '？')) return;
+        mstate.records = mstate.records.filter(function(x){ return x.id !== e.id; });
+        mSave(); renderMStats(); renderMList();
       };
       row.appendChild(del);
       box.appendChild(row);
     });
   }
-
-  function renderAll(){ renderStats(); renderList(); }
-
-  function switchType(t){
-    state.type = t;
-    state.category = CATS[t][0];
-    $('btnExp').className = 'exp' + (t === '支出' ? ' on' : '');
-    $('btnExp').classList.toggle('on', t === '支出');
-    $('btnInc').classList.toggle('on', t === '收入');
-    if (t === '收入') $('btnInc').classList.add('inc'); else $('btnInc').classList.remove('inc');
-    renderChips();
+  function setMType(t){
+    mstate.type = t;
+    mstate.category = MONEY_CATS[t][0];
+    $('segExp').classList.toggle('on', t === '支出');
+    $('segInc').classList.toggle('on', t === '收入');
+    renderMChips();
   }
-
-  function submit(){
-    var amt = parseFloat($('amount').value);
-    if (!amt || amt <= 0){ toast('先输入金额'); $('amount').focus(); return; }
-    var entry = makeEntry(state.type, state.category, amt, $('date').value || todayStr(), $('memo').value);
-    state.entries = addEntry(state.entries, entry);
-    save(); renderAll();
-    $('amount').value = '';
-    $('memo').value = '';
-    toast('已记 ' + entry.type + ' ' + money(entry.amount));
+  $('segExp').onclick = function(){ setMType('支出'); };
+  $('segInc').onclick = function(){ setMType('收入'); };
+  $('mSave').onclick = function(){
+    var amt = parseFloat($('mAmount').value);
+    if (!amt || amt <= 0){ toast('先输入金额'); $('mAmount').focus(); return; }
+    var rec = moneyRecord(mstate.type, mstate.category, amt, $('mDate').value || todayStr(), $('mMemo').value);
+    mstate.records = mstate.records.concat([rec]);
+    mSave(); renderMStats(); renderMList();
+    $('mAmount').value = ''; $('mMemo').value = '';
+    toast('已记 ' + rec.type + ' ¥' + rec.amount);
     if (navigator.vibrate) navigator.vibrate(12);
-  }
-
-  function download(name, text){
-    var blob = new Blob(['\uFEFF' + text], {type: 'text/csv;charset=utf-8'});
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
-  }
-
-  // 初始化
-  state.entries = load();
-  $('date').value = todayStr();
-  renderChips();
-  renderAll();
-
-  $('btnExp').onclick = function(){ switchType('支出'); };
-  $('btnInc').onclick = function(){ switchType('收入'); };
-  $('save').onclick = submit;
-  $('amount').addEventListener('keydown', function(ev){ if (ev.key === 'Enter') submit(); });
-
-  $('btnExport').onclick = function(){
-    if (!state.entries.length){ toast('还没有记录'); return; }
-    download('记账数据_' + todayStr().replace(/-/g, '') + '.csv', toCsv(state.entries));
-    toast('已导出 ' + state.entries.length + ' 笔');
   };
-
-  $('btnCopy').onclick = function(){
-    if (!state.entries.length){ toast('还没有记录'); return; }
-    var text = toCsv(state.entries);
-    if (navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(text).then(function(){ toast('已复制，可粘贴发给 AI'); },
-        function(){ toast('复制失败，请用导出'); });
-    } else {
-      var ta = document.createElement('textarea');
-      ta.value = text; document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); toast('已复制'); } catch (e){ toast('复制失败'); }
-      ta.remove();
-    }
+  $('mAmount').addEventListener('keydown', function(ev){ if (ev.key === 'Enter') $('mSave').click(); });
+  $('mExport').onclick = function(){
+    if (!mstate.records.length){ toast('还没有记录'); return; }
+    download('记账数据_' + todayStr().replace(/-/g,'') + '.csv', moneyToCsv(mstate.records));
+    toast('已导出 ' + mstate.records.length + ' 笔');
   };
-
-  $('btnImport').onclick = function(){ $('fileInput').click(); };
-  $('fileInput').onchange = function(ev){
-    var f = ev.target.files && ev.target.files[0];
-    if (!f) return;
+  $('mCopy').onclick = function(){
+    if (!mstate.records.length){ toast('还没有记录'); return; }
+    copyText(moneyToCsv(mstate.records), '已复制，可粘贴发给 AI');
+  };
+  $('mImport').onclick = function(){ $('mFile').click(); };
+  $('mFile').onchange = function(ev){
+    var f = ev.target.files && ev.target.files[0]; if (!f) return;
     var rd = new FileReader();
     rd.onload = function(){
-      var incoming = parseCsv(rd.result);
-      if (!incoming.length){ toast('文件里没读到有效记录'); return; }
-      var before = state.entries.length;
-      state.entries = mergeEntries(state.entries, incoming);
-      save(); renderAll();
-      toast('导入 ' + incoming.length + ' 笔，新增 ' + (state.entries.length - before) + ' 笔');
+      var inc = moneyParseCsv(rd.result);
+      if (!inc.length){ toast('没读到有效记录'); return; }
+      var before = mstate.records.length;
+      mstate.records = mergeByKey(mstate.records, inc, function(e){
+        return [e.date,e.type,e.category,e.amount,e.memo].join('|');
+      });
+      mSave(); renderMStats(); renderMList();
+      toast('导入 ' + inc.length + ' 笔，新增 ' + (mstate.records.length - before) + ' 笔');
       ev.target.value = '';
     };
     rd.readAsText(f, 'UTF-8');
   };
+
+  // ══════════ 健康 ══════════
+  var hstate = {records: [], quality: 4, energy: 4, water: 0, sport: '无', photo: null,
+    meals: {breakfast:'吃了', lunch:'吃了', dinner:'吃了'},
+    mealText: {breakfast:'', lunch:'', dinner:''}};
+  function hLoad(){ try { return JSON.parse(localStorage.getItem(HEALTH_KEY) || '[]'); } catch(e){ return []; } }
+  function hSave(){ try { localStorage.setItem(HEALTH_KEY, JSON.stringify(hstate.records)); } catch(e){ toast('保存失败：存储已满'); } }
+
+  function renderStars(){
+    [['hQuality','quality'],['hEnergy','energy']].forEach(function(p){
+      var box = $(p[0]); box.innerHTML = '';
+      for (var i = 1; i <= 5; i++){
+        (function(v){
+          var b = document.createElement('button');
+          b.className = 'star' + (hstate[p[1]] >= v ? ' on' : '');
+          b.textContent = v;
+          b.onclick = function(){ hstate[p[1]] = v; renderStars(); };
+          box.appendChild(b);
+        })(i);
+      }
+    });
+  }
+  function renderMeals(){
+    var box = $('hMeals'); box.innerHTML = '';
+    [['breakfast','早餐'],['lunch','午餐'],['dinner','晚餐']].forEach(function(p){
+      var key = p[0], name = p[1];
+      var wrap = document.createElement('div'); wrap.className = 'meal';
+      var top = document.createElement('div'); top.className = 'top';
+      var nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = name;
+      var seg = document.createElement('div'); seg.className = 'seg2';
+      ['吃了','没吃'].forEach(function(val){
+        var b = document.createElement('button');
+        b.textContent = val;
+        b.className = hstate.meals[key] === val ? 'on' + (val === '没吃' ? ' bad' : '') : '';
+        b.onclick = function(){ hstate.meals[key] = val; renderMeals(); updateHTags(); };
+        seg.appendChild(b);
+      });
+      top.appendChild(nm); top.appendChild(seg);
+      var inp = document.createElement('input');
+      inp.type = 'text'; inp.maxLength = 40; inp.placeholder = '吃了什么？如：包子+豆浆';
+      inp.value = hstate.mealText[key]; inp.disabled = hstate.meals[key] !== '吃了';
+      inp.oninput = function(){ hstate.mealText[key] = inp.value; };
+      wrap.appendChild(top); wrap.appendChild(inp);
+      box.appendChild(wrap);
+    });
+  }
+  function renderSports(){
+    var box = $('hSports'); box.innerHTML = '';
+    H_SPORTS.forEach(function(s){
+      var b = document.createElement('button');
+      b.className = 'chip' + (hstate.sport === s ? ' on' : '');
+      b.textContent = s;
+      b.onclick = function(){ hstate.sport = s; renderSports(); updateHTags(); };
+      box.appendChild(b);
+    });
+  }
+  function renderQuick(){
+    var box = $('hQuick'); box.innerHTML = '';
+    H_QUICK.forEach(function(q){
+      var b = document.createElement('button'); b.textContent = '＋' + q;
+      b.onclick = function(){
+        var el = $('hTrainDetail'), cur = el.value.trim();
+        el.value = cur ? (cur + (cur.slice(-1) === '+' ? '' : '+') + q) : q;
+        el.dispatchEvent(new Event('input'));
+      };
+      box.appendChild(b);
+    });
+  }
+  function renderPhoto(){
+    var box = $('hPhotoPreview');
+    if (hstate.photo){
+      $('hPhotoImg').src = hstate.photo;
+      box.style.display = 'block'; $('hPhotoBtn').style.display = 'none';
+    } else {
+      box.style.display = 'none'; $('hPhotoBtn').style.display = 'flex';
+    }
+  }
+  function updateHSleep(){
+    var h = calcSleep($('hStart').value, $('hEnd').value);
+    $('hSleepLen').textContent = h === null ? '—' : (h.toFixed(1) + ' 小时');
+  }
+  function updateHTags(){
+    var d = $('hDate').value || todayStr();
+    $('hWeekday').textContent = ['周日','周一','周二','周三','周四','周五','周六'][new Date(d + 'T00:00:00').getDay()];
+    var miss = 0;
+    ['breakfast','lunch','dinner'].forEach(function(k){ if (hstate.meals[k] !== '吃了') miss++; });
+    $('hMealTag').textContent = miss === 0 ? '三餐规律' : (miss + ' 餐未吃');
+    $('hMealTag').style.color = miss === 0 ? '#1E7B4D' : '#B45F06';
+    $('hSportTag').textContent = (Number($('hMinutes').value) || 0) + ' 分钟';
+    $('hWaterNum').textContent = hstate.water + ' 杯';
+  }
+  function renderHStats(){
+    var s = healthSummarize(hstate.records, 7);
+    $('kSleep').textContent = s.avgSleep === null ? '—' : s.avgSleep.toFixed(1) + 'h';
+    $('kStart').textContent = s.avgStart || '—';
+    $('kSport').textContent = s.minutes + '分';
+    $('kMiss').textContent = s.missBreakfast + '次';
+  }
+  function renderHList(){
+    var box = $('hList');
+    var list = hstate.records.slice().sort(function(a,b){ return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });
+    $('hCount').textContent = list.length + ' 条';
+    if (!list.length){
+      box.innerHTML = '<div class="empty">还没有记录。<br>填上面的内容，点「保存今天」。</div>';
+      return;
+    }
+    box.innerHTML = '';
+    list.slice(0, 40).forEach(function(e){
+      var row = document.createElement('div'); row.className = 'item';
+      var img = document.createElement('img'); img.className = 'thumb'; img.alt = '';
+      var mid = document.createElement('div'); mid.className = 'mid';
+      var bits = [];
+      if (e.sleepHours !== '') bits.push('睡 ' + e.sleepHours + 'h');
+      var miss = 0;
+      ['breakfast','lunch','dinner'].forEach(function(k){ if (e[k] !== '吃了') miss++; });
+      if (miss) bits.push('缺 ' + miss + ' 餐');
+      if (e.sport && e.sport !== '无') bits.push(e.sport + (e.trainDetail ? '·' + e.trainDetail : '') + ' ' + (e.minutes||0) + 'min');
+      if (e.weight !== '') bits.push(e.weight + 'kg');
+      var mealsText = [];
+      if (e.breakfastText) mealsText.push('早:' + e.breakfastText);
+      if (e.lunchText) mealsText.push('午:' + e.lunchText);
+      if (e.dinnerText) mealsText.push('晚:' + e.dinnerText);
+      mid.innerHTML = '<div class="t1">' + e.date + (e.energy ? '　精神 ' + e.energy + '/5' : '') + '</div>' +
+        '<div class="t2">' + (bits.join(' · ') || '—') +
+        (mealsText.length ? '<br>' + mealsText.join('　') : '') +
+        (e.note ? '<br>' + e.note.replace(/</g,'&lt;') : '') + '</div>';
+      var del = document.createElement('button');
+      del.className = 'del'; del.textContent = '✕';
+      del.onclick = function(){
+        if (!confirm('删除 ' + e.date + ' 的记录？')) return;
+        hstate.records = hstate.records.filter(function(x){ return x.id !== e.id; });
+        hSave();
+        if (e.hasPhoto && photosReady()) idbDel(e.id);
+        renderHStats(); renderHList();
+      };
+      row.appendChild(img); row.appendChild(mid); row.appendChild(del);
+      box.appendChild(row);
+      if (e.hasPhoto && photosReady()){
+        idbGet(e.id).then(function(url){ if (url){ img.src = url; img.style.display = 'block'; } });
+      }
+    });
+  }
+  function resetHForm(){
+    $('hDate').value = todayStr();
+    $('hStart').value = '23:30'; $('hEnd').value = '07:30';
+    $('hWeight').value = ''; $('hMinutes').value = ''; $('hTrainDetail').value = ''; $('hNote').value = '';
+    hstate.quality = 4; hstate.energy = 4; hstate.water = 0; hstate.sport = '无'; hstate.photo = null;
+    hstate.meals = {breakfast:'吃了', lunch:'吃了', dinner:'吃了'};
+    hstate.mealText = {breakfast:'', lunch:'', dinner:''};
+    renderStars(); renderMeals(); renderSports(); renderQuick(); renderPhoto();
+    updateHSleep(); updateHTags();
+  }
+  function compressImage(file){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(){
+        var img = new Image();
+        img.onload = function(){
+          var t = targetSize(img.width, img.height, 900);
+          var cv = document.createElement('canvas');
+          cv.width = t.w; cv.height = t.h;
+          cv.getContext('2d').drawImage(img, 0, 0, t.w, t.h);
+          resolve(cv.toDataURL('image/jpeg', 0.62));
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+  $('hSave').onclick = function(){
+    var rec = healthRecord({
+      date: $('hDate').value || todayStr(),
+      sleepStart: $('hStart').value, sleepEnd: $('hEnd').value, quality: hstate.quality,
+      breakfast: hstate.meals.breakfast, breakfastText: hstate.mealText.breakfast,
+      lunch: hstate.meals.lunch, lunchText: hstate.mealText.lunch,
+      dinner: hstate.meals.dinner, dinnerText: hstate.mealText.dinner,
+      water: hstate.water, sport: hstate.sport, trainDetail: $('hTrainDetail').value,
+      minutes: $('hMinutes').value, weight: $('hWeight').value,
+      energy: hstate.energy, note: $('hNote').value, hasPhoto: !!hstate.photo
+    });
+    var pending = hstate.photo;
+    hstate.records = mergeByKey(hstate.records, [rec], function(e){
+      return [e.date,e.sleepStart,e.sleepEnd,e.sport,e.trainDetail,e.minutes].join('|');
+    });
+    hSave();
+    if (pending && photosReady()) idbPut(rec.id, pending).catch(function(){ toast('照片保存失败'); });
+    renderHStats(); renderHList();
+    toast('已保存 ' + rec.date);
+    if (navigator.vibrate) navigator.vibrate(12);
+    resetHForm();
+  };
+  $('hStart').addEventListener('change', updateHSleep);
+  $('hEnd').addEventListener('change', updateHSleep);
+  $('hMinutes').addEventListener('input', updateHTags);
+  $('hWaterMinus').onclick = function(){ hstate.water = Math.max(0, hstate.water - 1); updateHTags(); };
+  $('hWaterPlus').onclick = function(){ hstate.water = Math.min(20, hstate.water + 1); updateHTags(); };
+  $('hPhotoBtn').onclick = function(){ $('hPhotoInput').click(); };
+  $('hPhotoDel').onclick = function(){ hstate.photo = null; renderPhoto(); };
+  $('hPhotoInput').onchange = function(ev){
+    var f = ev.target.files && ev.target.files[0]; if (!f) return;
+    compressImage(f).then(function(url){
+      hstate.photo = url; renderPhoto();
+      toast('照片就绪（' + Math.round(url.length / 1024) + ' KB）');
+    }).catch(function(){ toast('照片读取失败'); });
+    ev.target.value = '';
+  };
+  $('hExport').onclick = function(){
+    if (!hstate.records.length){ toast('还没有记录'); return; }
+    download('健康数据_' + todayStr().replace(/-/g,'') + '.csv', healthToCsv(hstate.records));
+    toast('已导出 ' + hstate.records.length + ' 条（照片不导出）');
+  };
+  $('hCopy').onclick = function(){
+    if (!hstate.records.length){ toast('还没有记录'); return; }
+    copyText(healthToCsv(hstate.records), '已复制，可粘贴发给 AI');
+  };
+  $('hImport').onclick = function(){ $('hFile').click(); };
+  $('hFile').onchange = function(ev){
+    var f = ev.target.files && ev.target.files[0]; if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function(){
+      var inc = healthParseCsv(rd.result);
+      if (!inc.length){ toast('没读到有效记录'); return; }
+      var before = hstate.records.length;
+      hstate.records = mergeByKey(hstate.records, inc, function(e){
+        return [e.date,e.sleepStart,e.sleepEnd,e.sport,e.trainDetail,e.minutes].join('|');
+      });
+      hSave(); renderHStats(); renderHList();
+      toast('导入 ' + inc.length + ' 条，新增 ' + (hstate.records.length - before) + ' 条');
+      ev.target.value = '';
+    };
+    rd.readAsText(f, 'UTF-8');
+  };
+
+  // ══════════ 概览 ══════════
+  function renderHome(){
+    var month = todayStr().slice(0,7);
+    var ms = moneySummarize(mstate.records, month);
+    var hs = healthSummarize(hstate.records, 7);
+    $('homeMonth').textContent = month + ' 概览';
+    $('hExp').textContent = '¥' + ms.expense.toFixed(0);
+    $('hBal').textContent = (ms.balance < 0 ? '-' : '') + '¥' + Math.abs(ms.balance).toFixed(0);
+    $('hSleep').textContent = hs.avgSleep === null ? '—' : hs.avgSleep.toFixed(1) + 'h';
+    $('hSport').textContent = hs.minutes + '分';
+    $('hInc').textContent = '¥' + ms.income.toFixed(2).replace(/\.00$/, '');
+    $('hExp2').textContent = '¥' + ms.expense.toFixed(2).replace(/\.00$/, '');
+    $('hBal2').textContent = (ms.balance < 0 ? '-' : '') + '¥' + Math.abs(ms.balance).toFixed(2).replace(/\.00$/, '');
+    $('hRate').textContent = ms.income > 0 ? (ms.balance / ms.income * 100).toFixed(0) + '%' : '—';
+
+    var today = todayStr();
+    var mToday = mstate.records.filter(function(e){ return e.date === today; }).length;
+    $('homeMoneySub').textContent = mToday ? ('今天已记 ' + mToday + ' 笔') : ('本月共 ' + mstate.records.filter(function(e){ return e.date.slice(0,7) === month; }).length + ' 笔');
+    var hToday = hstate.records.filter(function(e){ return e.date === today; }).length;
+    $('homeHealthSub').textContent = hToday ? '今天已记' : (hstate.records.length ? ('共 ' + hstate.records.length + ' 条记录') : '还没开始记录');
+
+    var tips = [];
+    if (!mstate.records.length) tips.push('先用 30 秒记下今天第一笔花销。');
+    if (ms.income > 0){
+      var rate = ms.balance / ms.income;
+      if (rate < 0) tips.push('本月支出已超过收入，先看看哪类花得最多。');
+      else if (rate < 0.2) tips.push('本月储蓄率 ' + (rate*100).toFixed(0) + '%，低于 20% 健康线。');
+      else tips.push('本月储蓄率 ' + (rate*100).toFixed(0) + '%，保持住。');
+    }
+    if (!hstate.records.length) tips.push('再记一条健康数据：几点睡、吃了什么。');
+    if (hs.avgSleep !== null && hs.avgSleep < 7) tips.push('近 7 天平均睡眠 ' + hs.avgSleep.toFixed(1) + ' 小时，不足 7 小时。');
+    if (hs.avgStart && (hhmmToMin(hs.avgStart) === null ? false : (hhmmToMin(hs.avgStart) < 720))) tips.push('平均入睡 ' + hs.avgStart + '，已过午夜；先把起床时间固定住。');
+    if (hs.n >= 3 && hs.minutes < 150) tips.push('近 7 天运动 ' + hs.minutes + ' 分钟，低于每周 150 分钟。');
+    if (hs.missBreakfast >= 2) tips.push('近 7 天有 ' + hs.missBreakfast + ' 天没吃早餐。');
+    var box = $('homeTips');
+    box.innerHTML = '';
+    if (!tips.length) tips.push('数据都很健康，继续保持记录。');
+    tips.slice(0, 5).forEach(function(t){
+      var d = document.createElement('div'); d.className = 'kv';
+      d.innerHTML = '<span>' + t + '</span>';
+      box.appendChild(d);
+    });
+  }
+
+  // ══════════ 初始化 ══════════
+  mstate.records = mLoad();
+  hstate.records = hLoad();
+  $('mDate').value = todayStr();
+  setMType('支出');
+  renderMStats(); renderMList();
+  resetHForm(); renderHStats(); renderHList();
+  renderHome();
 })();
+
 </script>
 </body>
 </html>
