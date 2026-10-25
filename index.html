@@ -126,6 +126,20 @@
   .kv:last-child{border-bottom:0}
   .kv .r{font-weight:700;font-variant-numeric:tabular-nums}
   /* 智能粘贴 */
+  /* 计划生成 */
+  .seg3{display:flex;background:#EDF2F4;border-radius:10px;padding:3px;gap:3px;margin-bottom:10px}
+  .seg3 button{flex:1;border:0;background:transparent;padding:8px;border-radius:8px;
+    font-size:13px;font-family:inherit;color:var(--sub)}
+  .seg3 button.on{background:#fff;color:var(--accent);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .plan-out{margin-top:12px}
+  .plan-head{font-size:12.5px;color:var(--sub);margin-bottom:8px}
+  .plan-day{background:#F7FAFC;border-radius:10px;padding:9px 12px;margin-bottom:8px}
+  .plan-day h3{margin:0 0 5px;font-size:13.5px;color:#1F3A5F;font-weight:600}
+  .plan-day h3 span{font-size:11px;color:var(--sub);font-weight:400}
+  .plan-day ul{margin:0;padding-left:15px;font-size:12.5px;line-height:1.75;color:#37474F}
+  .plan-day li span{color:#90A4AE;font-size:11.5px}
+  .plan-tip{background:#FFF8E6;border-left:3px solid #E8B84B;padding:8px 10px;border-radius:8px;
+    font-size:12px;color:#7A5B1E;margin-top:8px;line-height:1.65}
   .paste-card textarea{width:100%;border:1px solid #E3E8F0;border-radius:12px;padding:10px 12px;
     font-size:14px;font-family:inherit;background:#FAFBFF;color:var(--ink);resize:vertical;min-height:62px;line-height:1.5}
   .paste-card textarea:focus{outline:none;border-color:var(--accent);background:#fff}
@@ -242,6 +256,26 @@
         <div class="stat"><div class="k">运动</div><div class="v" id="kSport">—</div></div>
         <div class="stat"><div class="k">缺早餐</div><div class="v" id="kMiss">—</div></div>
       </div>
+    </div>
+    <div class="card">
+      <h2>📋 计划生成 <span class="tag" id="planTag">训练 · 饮食</span></h2>
+      <div class="seg3" id="planGoal">
+        <button data-goal="减脂" class="on">减脂</button>
+        <button data-goal="增肌">增肌</button>
+        <button data-goal="维持">维持</button>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <div class="field"><label>每周训练天数</label>
+          <select id="planDays"><option value="3">3 天</option><option value="2">2 天</option>
+            <option value="4">4 天</option><option value="5">5 天</option></select></div>
+        <div class="field"><label>场地</label>
+          <select id="planPlace"><option value="健身房">健身房</option><option value="居家">居家（无器械）</option></select></div>
+      </div>
+      <div class="row">
+        <button class="btn-mini primary" id="genTrain">生成训练计划</button>
+        <button class="btn-mini primary" id="genDiet">生成饮食计划</button>
+      </div>
+      <div id="planOut" class="plan-out" style="display:none"></div>
     </div>
     <div class="card" style="padding:12px 14px">
       <div class="row">
@@ -468,6 +502,153 @@ function payParse(text){
     amount: round2(amount), pay: pay, merchant: merchant,
     memo: (merchant || raw).slice(0, 40)
   };
+}
+
+// ══════════ 训练 / 饮食计划生成 ══════════
+var PLAN_KEY = 'dsh_plan_v1';
+
+var GYM_MOVES = {
+  '推': [['杠铃卧推','4','8-10'],['哑铃上斜卧推','3','10-12'],['坐姿哑铃肩推','3','10-12'],['绳索下压','3','12-15']],
+  '拉': [['高位下拉','4','10-12'],['坐姿划船','4','10-12'],['面拉','3','12-15'],['哑铃弯举','3','12-15']],
+  '腿': [['深蹲','4','8-10'],['罗马尼亚硬拉','3','10-12'],['腿举','3','12-15'],['站姿提踵','4','15-20']],
+  '核心': [['平板支撑','3','40-60 秒'],['卷腹','3','15-20']],
+  '有氧': [['慢跑 / 椭圆机 / 单车','1','25-35 分钟']]
+};
+var HOME_MOVES = {
+  '推': [['俯卧撑','4','10-15'],['椅子臂屈伸','3','12-15'],['弹力带肩推','3','12-15'],['窄距俯卧撑','3','8-12']],
+  '拉': [['弹力带划船','4','12-15'],['毛巾划船 / 引体向上','3','6-10'],['弹力带面拉','3','12-15'],['弹力带弯举','3','12-15']],
+  '腿': [['深蹲','4','15-20'],['箭步蹲','3','每侧 10-12'],['臀桥','3','15-20'],['提踵','4','20']],
+  '核心': [['平板支撑','3','40-60 秒'],['死虫式','3','每侧 10']],
+  '有氧': [['开合跳 + 高抬腿','1','20-30 分钟']]
+};
+var PLAN_SPLITS = {
+  '2': [['全身 A', ['推','腿']], ['全身 B', ['拉','核心','有氧']]],
+  '3': [['推 · 胸肩三头', ['推','核心']], ['拉 · 背二头', ['拉','核心']], ['腿 · 下肢', ['腿','有氧']]],
+  '4': [['推 · 胸肩三头', ['推','核心']], ['拉 · 背二头', ['拉','核心']], ['腿 · 下肢', ['腿']], ['全身 + 有氧', ['推','拉','有氧']]],
+  '5': [['推 · 胸肩三头', ['推','核心']], ['拉 · 背二头', ['拉','核心']], ['腿 · 下肢', ['腿']], ['上肢综合', ['推','拉']], ['下肢 + 有氧', ['腿','有氧']]]
+};
+
+var MEAL_LIB = {
+  '早餐': [['鸡蛋 2 个 + 牛奶 250ml + 全麦面包 2 片', 480, 26],
+           ['燕麦 50g + 牛奶 250ml + 香蕉 1 根', 460, 22],
+           ['包子 2 个 + 豆浆 300ml + 鸡蛋 1 个', 470, 24],
+           ['杂粮粥 1 碗 + 鸡蛋 1 个 + 凉拌菜', 400, 20]],
+  '午餐': [['米饭 1 碗 + 鸡胸/鸡腿 150g + 青菜', 650, 40],
+           ['牛肉面 1 碗 + 卤蛋 1 个 + 青菜', 620, 32],
+           ['米饭 1 碗 + 清蒸鱼 150g + 西兰花', 620, 38],
+           ['盖饭（少油）+ 一份蔬菜', 680, 30]],
+  '晚餐': [['米饭半碗 + 豆腐 100g + 青菜 + 鸡蛋 1 个', 500, 28],
+           ['红薯 1 个 + 鸡胸 120g + 沙拉', 480, 35],
+           ['杂粮饭半碗 + 虾/鱼 120g + 时蔬', 500, 32],
+           ['面条（少油）+ 瘦肉 + 青菜', 520, 26]],
+  '加餐': [['酸奶 1 杯 + 坚果一小把', 220, 10],
+           ['水果 1 份 + 鸡蛋 1 个', 180, 8],
+           ['牛奶 1 盒 + 全麦饼干 2 片', 200, 10]]
+};
+
+function trainPlan(opts){
+  opts = opts || {};
+  var goal = opts.goal || '减脂';
+  var days = String(opts.days || 3);
+  var place = opts.place === '居家' ? '居家' : '健身房';
+  var lib = place === '居家' ? HOME_MOVES : GYM_MOVES;
+  var split = PLAN_SPLITS[days] || PLAN_SPLITS['3'];
+  var rest = goal === '增肌' ? '组间休息 90 秒' : (goal === '减脂' ? '组间休息 45-60 秒' : '组间休息 60-75 秒');
+  var cardio = goal === '减脂' ? '每周额外 2-3 次有氧（每次 25-35 分钟）'
+             : (goal === '增肌' ? '有氧每周 1-2 次，别过量（影响恢复）' : '有氧每周 2 次');
+  var out = { type:'train', goal:goal, days:Number(days), place:place, rest:rest, weeks:[], rules:[] };
+
+  split.forEach(function(s, i){
+    var items = [];
+    s[1].forEach(function(part){
+      (lib[part] || []).forEach(function(m){
+        var sets = parseInt(m[1], 10) || 3;
+        var reps = m[2];
+        if (part !== '有氧' && goal === '增肌' && (part === '推' || part === '拉' || part === '腿')){
+          sets = Math.min(5, sets + 1);
+        }
+        if (part !== '有氧' && part !== '核心' && goal === '减脂') reps = '12-15';
+        items.push({ name: m[0], sets: sets, reps: reps, part: part });
+      });
+    });
+    out.weeks.push({ day: '第 ' + (i+1) + ' 天', part: s[0], items: items });
+  });
+
+  out.rules = [
+    '每次训练前热身 5 分钟（关节活动 + 快走），练完拉伸 5 分钟',
+    rest,
+    '渐进超负荷：每周比上周多 2.5kg，或多做 1-2 次',
+    cardio,
+    '4 周为一周期，第 4 周减量 40%，再重新开始',
+    '睡够 7 小时以上——增肌减脂都是恢复出来的'
+  ];
+  return out;
+}
+
+function dietPlan(opts){
+  opts = opts || {};
+  var goal = opts.goal || '减脂';
+  var w = Number(opts.weight) > 30 ? Number(opts.weight) : 60;
+  var miss = Number(opts.missBreakfast) || 0;
+  var mult = goal === '减脂' ? 0.85 : (goal === '增肌' ? 1.1 : 1);
+  var kcal = Math.round(w * 30 * mult);
+  var protein = Math.round(w * (goal === '增肌' ? 1.8 : 1.6));
+  var fat = Math.round(kcal * 0.25 / 9);
+  var carb = Math.max(60, Math.round((kcal - protein * 4 - fat * 9) / 4));
+
+  var ratios = { '早餐':0.3, '午餐':0.35, '晚餐':0.25, '加餐':0.1 };
+  var meals = [];
+  ['早餐','午餐','晚餐','加餐'].forEach(function(k){
+    meals.push({
+      name: k,
+      kcal: Math.round(kcal * ratios[k]),
+      protein: Math.round(protein * ratios[k]),
+      options: MEAL_LIB[k]
+    });
+  });
+
+  var tips = [
+    '蛋白质每餐 20-35g，分 4 次吃吸收更好',
+    '每天喝水 8 杯（约 1.6-2L）',
+    '烹饪少油少糖，外卖选蒸/煮/烤，避开糖醋、红烧、油炸',
+    '份量按热量目标调整（饭量 ±20%），别死守克数',
+    '这是粗略估算，不是医学营养处方；有特殊疾病请咨询医生'
+  ];
+  if (miss >= 1) tips.unshift('你近 7 天有 ' + miss + ' 天没吃早餐——先解决这一顿：1 个鸡蛋 + 1 盒奶就够，5 分钟能吃完');
+  if (goal === '减脂') tips.unshift('减脂关键是"总热量缺口"，不是不吃碳水——碳水放在训练前后吃');
+  if (goal === '增肌') tips.unshift('增肌需要热量盈余 + 足够蛋白，别怕吃饭');
+
+  return { type:'diet', goal:goal, weight:w, kcal:kcal, protein:protein, carb:carb,
+           fat:fat, meals:meals, tips:tips };
+}
+
+function planToText(p){
+  var L = [];
+  if (p.type === 'train'){
+    L.push('【训练计划】' + p.goal + ' · 每周 ' + p.days + ' 天 · ' + p.place);
+    L.push('');
+    p.weeks.forEach(function(d){
+      L.push(d.day + ' · ' + d.part);
+      d.items.forEach(function(it){
+        L.push('  - ' + it.name + '  ' + it.sets + ' 组 × ' + it.reps);
+      });
+      L.push('');
+    });
+    L.push('注意：');
+    p.rules.forEach(function(r){ L.push('· ' + r); });
+  } else {
+    L.push('【饮食计划】' + p.goal + ' · 体重 ' + p.weight + 'kg');
+    L.push('目标：' + p.kcal + ' kcal/天 | 蛋白 ' + p.protein + 'g · 碳水 ' + p.carb + 'g · 脂肪 ' + p.fat + 'g');
+    L.push('');
+    p.meals.forEach(function(m){
+      L.push(m.name + '（约 ' + m.kcal + ' kcal，蛋白 ' + m.protein + 'g）三选一：');
+      m.options.forEach(function(o){ L.push('  - ' + o[0] + '（约 ' + o[1] + ' kcal）'); });
+      L.push('');
+    });
+    L.push('注意：');
+    p.tips.forEach(function(t){ L.push('· ' + t); });
+  }
+  return L.join('\n');
 }
 
 function mergeByKey(a, b, keyFn){
@@ -1069,6 +1250,86 @@ function zipStore(files){
     }).catch(function(){ toast('照片读取失败'); });
     ev.target.value = '';
   };
+  // ══════════ 计划生成 ══════════
+  function planOpts(){
+    var g = document.querySelector('#planGoal .on');
+    return {
+      goal: g ? g.getAttribute('data-goal') : '减脂',
+      days: $('planDays').value,
+      place: $('planPlace').value
+    };
+  }
+  function latestWeight(){
+    var list = hstate.records.slice().sort(function(a, b){ return a.date < b.date ? 1 : -1; });
+    for (var i = 0; i < list.length; i++){ if (Number(list[i].weight) > 0) return Number(list[i].weight); }
+    var v = parseFloat($('hWeight').value);
+    return v > 0 ? v : 0;
+  }
+  function renderPlan(p, stamp){
+    var box = $('planOut');
+    box.style.display = 'block';
+    var html = '';
+    if (p.type === 'train'){
+      html += '<div class="plan-head">' + p.goal + ' · 每周 ' + p.days + ' 天 · ' + p.place +
+              ' · 4 周循环' + (stamp ? ' · 生成于 ' + stamp : '') + '</div>';
+      p.weeks.forEach(function(d){
+        html += '<div class="plan-day"><h3>' + d.day + ' · ' + d.part + '</h3><ul>';
+        d.items.forEach(function(it){
+          html += '<li>' + it.name + ' <span>' + it.sets + ' 组 × ' + it.reps + '</span></li>';
+        });
+        html += '</ul></div>';
+      });
+      html += '<div class="plan-tip">' + p.rules.map(function(r){ return '· ' + r; }).join('<br>') + '</div>';
+    } else {
+      html += '<div class="plan-head">' + p.goal + ' · 体重 ' + p.weight + 'kg · 目标 ' + p.kcal +
+              ' kcal/天' + (stamp ? ' · 生成于 ' + stamp : '') + '</div>';
+      html += '<div class="plan-day"><h3>三大营养素</h3><ul>' +
+        '<li>蛋白质 <span>' + p.protein + ' g</span></li>' +
+        '<li>碳水 <span>' + p.carb + ' g</span></li>' +
+        '<li>脂肪 <span>' + p.fat + ' g</span></li></ul></div>';
+      p.meals.forEach(function(m){
+        html += '<div class="plan-day"><h3>' + m.name +
+                ' <span>约 ' + m.kcal + ' kcal · 蛋白 ' + m.protein + 'g</span></h3><ul>';
+        m.options.forEach(function(o){ html += '<li>' + o[0] + ' <span>' + o[1] + ' kcal</span></li>'; });
+        html += '</ul></div>';
+      });
+      html += '<div class="plan-tip">' + p.tips.map(function(t){ return '· ' + t; }).join('<br>') + '</div>';
+    }
+    html += '<div class="row" style="margin-top:10px">' +
+            '<button class="btn-mini" id="planCopy">复制计划</button>' +
+            '<button class="btn-mini" id="planHide">收起</button></div>';
+    box.innerHTML = html;
+    $('planCopy').onclick = function(){ copyText(planToText(p), '已复制，可发给教练或朋友'); };
+    $('planHide').onclick = function(){ box.style.display = 'none'; };
+    $('planTag').textContent = p.type === 'train' ? '训练计划' : '饮食计划';
+  }
+  function planSave(p){
+    try { localStorage.setItem(PLAN_KEY, JSON.stringify({ plan: p, stamp: todayStr() })); } catch(e){}
+  }
+  $('genTrain').onclick = function(){
+    var p = trainPlan(planOpts());
+    planSave(p); renderPlan(p, todayStr());
+    toast('训练计划已生成');
+  };
+  $('genDiet').onclick = function(){
+    var s = healthSummarize(hstate.records, 7);
+    var w = latestWeight();
+    if (!w){ w = 60; toast('没找到体重，先按 60kg 估算，录入体重更准'); }
+    var p = dietPlan({ goal: planOpts().goal, weight: w, missBreakfast: s.missBreakfast });
+    planSave(p); renderPlan(p, todayStr());
+    toast('饮食计划已生成');
+  };
+  document.querySelectorAll('#planGoal button').forEach(function(b){
+    b.onclick = function(){
+      document.querySelectorAll('#planGoal button').forEach(function(x){ x.classList.remove('on'); });
+      b.classList.add('on');
+    };
+  });
+  try {
+    var savedPlan = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null');
+    if (savedPlan && savedPlan.plan){ renderPlan(savedPlan.plan, savedPlan.stamp); }
+  } catch(e){}
+
   $('hExport').onclick = function(){
     if (!hstate.records.length){ toast('还没有记录'); return; }
     download('健康数据_' + todayStr().replace(/-/g,'') + '.csv', healthToCsv(hstate.records));
