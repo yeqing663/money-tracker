@@ -289,6 +289,8 @@
       </div>
       <button class="save" id="tlSave" style="margin-top:12px">打 卡</button>
       <div id="tlStats" class="plan-out"></div>
+      <button class="btn-mini" id="tlReport" style="width:100%;margin-top:8px">生成本月训练报告</button>
+      <div id="tlReportOut" class="plan-out" style="display:none"></div>
       <div class="list" id="tlList" style="margin-top:8px"></div>
       <div class="row" style="margin-top:10px">
         <button class="btn-mini" id="tlExport">导出 CSV</button>
@@ -716,6 +718,66 @@ function trainLogParseCsv(text){
     out.push(trainLogRecord(date, (v[1] || '').trim(), v[2], (v[3] || '').trim()));
   }
   return out;
+}
+
+function trainReport(list, month, planDays){
+  month = month || todayStr().slice(0, 7);
+  var recs = list.filter(function(e){ return String(e.date).slice(0, 7) === month; })
+                 .slice().sort(function(a, b){ return a.date < b.date ? -1 : 1; });
+  var mins = 0, byPart = {}, byWeek = {};
+  recs.forEach(function(e){
+    mins += Number(e.minutes) || 0;
+    byPart[e.part] = (byPart[e.part] || 0) + 1;
+    var w = weekOfMonth(e.date);
+    byWeek[w] = (byWeek[w] || 0) + 1;
+  });
+  var target = Math.max(4, (Number(planDays) || 3) * 4);
+  var rate = Math.min(100, Math.round(recs.length / target * 100));
+  var avg = recs.length ? Math.round(mins / recs.length) : 0;
+  var insights = [];
+
+  if (!recs.length){
+    insights.push('本月还没有打卡记录——先打卡一次，数据才有意义。');
+  } else {
+    insights.push('本月打卡 ' + recs.length + ' 次，目标 ' + target + ' 次，完成率 ' + rate + '%。');
+    insights.push('总时长 ' + mins + ' 分钟，平均每次 ' + avg + ' 分钟' +
+      (avg < 30 ? '（偏短，建议 40 分钟以上）' : (avg > 90 ? '（偏长，注意恢复）' : '（节奏合适）')) + '。');
+    var parts = Object.keys(byPart).sort(function(a, b){ return byPart[b] - byPart[a]; });
+    if (parts.length){
+      insights.push('练得最多的是「' + parts[0] + '」' + byPart[parts[0]] + ' 次。');
+      if (parts.length < 3) insights.push('部位只覆盖了 ' + parts.length + ' 个——建议至少练到推 / 拉 / 腿三类。');
+      else insights.push('部位覆盖 ' + parts.length + ' 类，结构比较完整。');
+    }
+    var weeks = Object.keys(byWeek).sort(function(a, b){ return a - b; });
+    if (weeks.length >= 2){
+      var counts = weeks.map(function(w){ return byWeek[w]; });
+      var maxW = Math.max.apply(null, counts), minW = Math.min.apply(null, counts);
+      if (maxW - minW >= 2) insights.push('每周次数波动较大（' + counts.join(' / ') + '），建议固定训练日。');
+      else insights.push('每周节奏稳定（' + counts.join(' / ') + '），保持。');
+    }
+    if (rate < 60) insights.push('完成率偏低——把训练日写进日程，比靠意志力有效。');
+    else if (rate >= 90) insights.push('完成率很高，注意别过度训练，每 4 周安排一周减量。');
+  }
+
+  return { type:'report', month: month, count: recs.length, minutes: mins, avg: avg,
+           byPart: byPart, byWeek: byWeek, target: target, rate: rate, insights: insights,
+           records: recs };
+}
+function weekOfMonth(dateStr){
+  var d = new Date(dateStr + 'T00:00:00');
+  return Math.ceil(d.getDate() / 7);
+}
+function trainReportToText(r){
+  var L = ['【训练月报】' + r.month];
+  L.push('打卡 ' + r.count + ' 次 / 目标 ' + r.target + ' 次（完成率 ' + r.rate + '%）');
+  L.push('总时长 ' + r.minutes + ' 分钟 · 平均 ' + r.avg + ' 分钟/次');
+  var parts = Object.keys(r.byPart);
+  if (parts.length) L.push('部位分布：' + parts.map(function(k){ return k + ' ×' + r.byPart[k]; }).join(' · '));
+  var weeks = Object.keys(r.byWeek).sort(function(a, b){ return a - b; });
+  if (weeks.length) L.push('周分布：' + weeks.map(function(k){ return '第' + k + '周 ' + r.byWeek[k] + ' 次'; }).join(' · '));
+  L.push('');
+  r.insights.forEach(function(t){ L.push('· ' + t); });
+  return L.join('\n');
 }
 
 function mergeByKey(a, b, keyFn){
@@ -1490,6 +1552,34 @@ function zipStore(files){
       ev.target.value = '';
     };
     rd.readAsText(f, 'UTF-8');
+  };
+  $('tlReport').onclick = function(){
+    var planDays = 3;
+    try {
+      var sp = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null');
+      if (sp && sp.plan && sp.plan.days) planDays = sp.plan.days;
+    } catch(e){}
+    var r = trainReport(tstate.records, todayStr().slice(0, 7), planDays);
+    var box = $('tlReportOut');
+    box.style.display = 'block';
+    var parts = Object.keys(r.byPart).map(function(k){
+      return '<span class="chip">' + k + ' ×' + r.byPart[k] + '</span>';
+    }).join('');
+    var weeks = Object.keys(r.byWeek).sort(function(a, b){ return a - b; }).map(function(k){
+      return '<span class="chip">第' + k + '周 ' + r.byWeek[k] + ' 次</span>';
+    }).join('');
+    box.innerHTML =
+      '<div class="plan-day"><h3>' + r.month + ' 月报 <span>完成率 ' + r.rate + '%</span></h3>' +
+      '<div class="kv" style="padding:5px 0"><span>打卡</span><b>' + r.count + ' / ' + r.target + ' 次</b></div>' +
+      '<div class="kv" style="padding:5px 0"><span>总时长</span><b>' + r.minutes + ' 分钟</b></div>' +
+      '<div class="kv" style="padding:5px 0"><span>平均每次</span><b>' + r.avg + ' 分钟</b></div>' +
+      (parts ? '<div class="chips" style="margin-top:6px">' + parts + '</div>' : '') +
+      (weeks ? '<div class="chips" style="margin-top:6px">' + weeks + '</div>' : '') +
+      '</div>' +
+      '<div class="plan-tip">' + r.insights.map(function(t){ return '· ' + t; }).join('<br>') + '</div>' +
+      '<div class="row" style="margin-top:10px"><button class="btn-mini" id="tlReportCopy">复制报告</button></div>';
+    $('tlReportCopy').onclick = function(){ copyText(trainReportToText(r), '已复制'); };
+    toast('本月报告已生成');
   };
   tstate.records = tlLoad();
   tlRenderDays(); tlRender();
