@@ -18,6 +18,7 @@
   .view{--accent:#1F3864;--accent2:#2F5597;--accent-soft:#E8EEF9;--accent-line:#D3DEED}
   .view--money{--accent:#1F3864;--accent2:#2F5597;--accent-soft:#E8EEF9;--accent-line:#D3DEED}
   .view--health{--accent:#0F3D3E;--accent2:#1B7A6E;--accent-soft:#E4F2EF;--accent-line:#CFE5E1}
+  .view--gym{--accent:#7A3E1D;--accent2:#B25B2E;--accent-soft:#F6E9E0}
   .wrap{max-width:520px;margin:0 auto;padding:0 14px 190px}
   .hero{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
     padding:calc(16px + env(safe-area-inset-top)) 16px 20px;border-radius:0 0 22px 22px;margin:0 -14px 14px}
@@ -257,48 +258,6 @@
         <div class="stat"><div class="k">缺早餐</div><div class="v" id="kMiss">—</div></div>
       </div>
     </div>
-    <div class="card">
-      <h2>📋 计划生成 <span class="tag" id="planTag">训练 · 饮食</span></h2>
-      <div class="seg3" id="planGoal">
-        <button data-goal="减脂" class="on">减脂</button>
-        <button data-goal="增肌">增肌</button>
-        <button data-goal="维持">维持</button>
-      </div>
-      <div class="row" style="margin-bottom:10px">
-        <div class="field"><label>每周训练天数</label>
-          <select id="planDays"><option value="3">3 天</option><option value="2">2 天</option>
-            <option value="4">4 天</option><option value="5">5 天</option></select></div>
-        <div class="field"><label>场地</label>
-          <select id="planPlace"><option value="健身房">健身房</option><option value="居家">居家（无器械）</option></select></div>
-      </div>
-      <div class="row">
-        <button class="btn-mini primary" id="genTrain">生成训练计划</button>
-        <button class="btn-mini primary" id="genDiet">生成饮食计划</button>
-      </div>
-      <div id="planOut" class="plan-out" style="display:none"></div>
-    </div>
-    <div class="card">
-      <h2>🏋️ 训练打卡 <span class="tag" id="tlTag">本月 0 次</span></h2>
-      <div class="chips" id="tlDays" style="margin-bottom:10px"></div>
-      <div class="row">
-        <div class="field"><label>时长（分钟）</label>
-          <select id="tlMin"><option>30</option><option>45</option><option selected>60</option>
-            <option>90</option><option>20</option></select></div>
-        <div class="field"><label>备注（选填）</label>
-          <input id="tlNote" type="text" maxlength="30" placeholder="卧推加重量"></div>
-      </div>
-      <button class="save" id="tlSave" style="margin-top:12px">打 卡</button>
-      <div id="tlStats" class="plan-out"></div>
-      <button class="btn-mini" id="tlReport" style="width:100%;margin-top:8px">生成本月训练报告</button>
-      <div id="tlReportOut" class="plan-out" style="display:none"></div>
-      <div class="list" id="tlList" style="margin-top:8px"></div>
-      <div class="row" style="margin-top:10px">
-        <button class="btn-mini" id="tlExport">导出 CSV</button>
-        <button class="btn-mini" id="tlCopy">复制 CSV</button>
-        <button class="btn-mini" id="tlImport">导入 CSV</button>
-      </div>
-      <input type="file" id="tlFile" accept=".csv,text/csv" style="display:none">
-    </div>
     <div class="card" style="padding:12px 14px">
       <div class="row">
         <div class="field"><label>日期</label><input id="hDate" type="date"></div>
@@ -370,10 +329,68 @@
   </div>
 </div>
 
+<!-- ══════════ 健身 ══════════ -->
+<div class="view view--gym" id="v-gym">
+  <div class="wrap">
+    <div class="hero">
+      <h1>健身</h1>
+      <div class="stats four">
+        <div class="stat"><div class="k">本月打卡</div><div class="v" id="gCount">0</div></div>
+        <div class="stat"><div class="k">总时长</div><div class="v" id="gMin">0</div></div>
+        <div class="stat"><div class="k">完成率</div><div class="v" id="gRate">—</div></div>
+        <div class="stat"><div class="k">平均</div><div class="v" id="gAvg">0</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>📋 计划生成 <span class="tag" id="planTag">训练 · 饮食</span></h2>
+      <div class="seg3" id="planGoal">
+        <button data-goal="减脂" class="on">减脂</button>
+        <button data-goal="增肌">增肌</button>
+        <button data-goal="维持">维持</button>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <div class="field"><label>每周训练天数</label>
+          <select id="planDays"><option value="3">3 天</option><option value="2">2 天</option>
+            <option value="4">4 天</option><option value="5">5 天</option></select></div>
+        <div class="field"><label>场地</label>
+          <select id="planPlace"><option value="健身房">健身房</option><option value="居家">居家（无器械）</option></select></div>
+      </div>
+      <div class="row">
+        <button class="btn-mini primary" id="genTrain">生成训练计划</button>
+        <button class="btn-mini primary" id="genDiet">生成饮食计划</button>
+      </div>
+      <div id="planOut" class="plan-out" style="display:none"></div>
+    </div>
+    <div class="card">
+      <h2>🏋️ 训练打卡 <span class="tag" id="tlTag">本月 0 次</span></h2>
+      <div class="chips" id="tlDays" style="margin-bottom:10px"></div>
+      <div class="row">
+        <div class="field"><label>时长（分钟）</label>
+          <select id="tlMin"><option>30</option><option>45</option><option selected>60</option>
+            <option>90</option><option>20</option></select></div>
+        <div class="field"><label>备注（选填）</label>
+          <input id="tlNote" type="text" maxlength="30" placeholder="卧推加重量"></div>
+      </div>
+      <button class="save" id="tlSave" style="margin-top:12px">打 卡</button>
+      <div id="tlStats" class="plan-out"></div>
+      <button class="btn-mini" id="tlReport" style="width:100%;margin-top:8px">生成本月训练报告</button>
+      <div id="tlReportOut" class="plan-out" style="display:none"></div>
+      <div class="list" id="tlList" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn-mini" id="tlExport">导出 CSV</button>
+        <button class="btn-mini" id="tlCopy">复制 CSV</button>
+        <button class="btn-mini" id="tlImport">导入 CSV</button>
+      </div>
+      <input type="file" id="tlFile" accept=".csv,text/csv" style="display:none">
+    </div>
+  </div>
+</div>
+
 <nav class="tabbar">
   <button class="on" data-view="home"><span class="ic">🏠</span>概览</button>
   <button data-view="money"><span class="ic">💰</span>记账</button>
   <button data-view="health"><span class="ic">🌙</span>健康</button>
+  <button data-view="gym"><span class="ic">💪</span>健身</button>
 </nav>
 
 <input type="file" id="mFile" accept=".csv,text/csv" style="display:none">
@@ -1000,7 +1017,7 @@ function zipStore(files){
   }
 
   // ══════════ 视图切换 ══════════
-  var VIEWS = {home:'v-home', money:'v-money', health:'v-health'};
+  var VIEWS = {home:'v-home', money:'v-money', health:'v-health', gym:'v-gym'};
   var current = 'home';
   function show(name){
     current = name;
@@ -1008,6 +1025,7 @@ function zipStore(files){
     document.querySelectorAll('.tabbar button').forEach(function(b){ b.classList.toggle('on', b.dataset.view === name); });
     window.scrollTo(0, 0);
     if (name === 'home') renderHome();
+    if (name === 'gym') renderGymStats();
   }
   document.querySelectorAll('.tabbar button').forEach(function(b){
     b.onclick = function(){ show(b.dataset.view); };
@@ -1489,6 +1507,7 @@ function zipStore(files){
     });
   }
   function tlRender(){
+    renderGymStats();
     var s = trainLogSummarize(tstate.records);
     $('tlTag').textContent = '本月 ' + s.count + ' 次';
     var parts = Object.keys(s.parts).map(function(k){
@@ -1581,6 +1600,20 @@ function zipStore(files){
     $('tlReportCopy').onclick = function(){ copyText(trainReportToText(r), '已复制'); };
     toast('本月报告已生成');
   };
+  function renderGymStats(){
+    if (!$('gCount')) return;
+    var s = trainLogSummarize(tstate.records);
+    var planDays = 3;
+    try {
+      var sp = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null');
+      if (sp && sp.plan && sp.plan.days) planDays = sp.plan.days;
+    } catch(e){}
+    var target = Math.max(4, planDays * 4);
+    $('gCount').textContent = s.count;
+    $('gMin').textContent = s.minutes;
+    $('gRate').textContent = Math.min(100, Math.round(s.count / target * 100)) + '%';
+    $('gAvg').textContent = s.count ? Math.round(s.minutes / s.count) : 0;
+  }
   tstate.records = tlLoad();
   tlRenderDays(); tlRender();
 
