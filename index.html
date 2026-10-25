@@ -125,6 +125,19 @@
   .kv{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed #EDF1F6;font-size:13px}
   .kv:last-child{border-bottom:0}
   .kv .r{font-weight:700;font-variant-numeric:tabular-nums}
+  /* 智能粘贴 */
+  .paste-card textarea{width:100%;border:1px solid #E3E8F0;border-radius:12px;padding:10px 12px;
+    font-size:14px;font-family:inherit;background:#FAFBFF;color:var(--ink);resize:vertical;min-height:62px;line-height:1.5}
+  .paste-card textarea:focus{outline:none;border-color:var(--accent);background:#fff}
+  .btn-mini{border:1px solid #E3E8F0;background:#fff;color:var(--ink);border-radius:10px;
+    padding:8px 12px;font-size:13px;font-family:inherit;cursor:pointer}
+  .btn-mini:active{transform:scale(.97)}
+  .btn-mini.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .paste-tip{margin-top:10px;font-size:13px;padding:10px 12px;border-radius:10px;
+    background:#F0F6FF;color:#1E3A5F;line-height:1.55}
+  .paste-tip.err{background:#FFF1F0;color:#A8071A}
+  .paste-card .row{display:flex;gap:8px;flex-wrap:nowrap}
+  .paste-card .row .btn-mini{flex:1;white-space:nowrap;padding:9px 6px}
 </style>
 </head>
 <body>
@@ -182,6 +195,16 @@
         <div class="stat"><div class="k">收入</div><div class="v inc" id="mInc">¥0</div></div>
         <div class="stat"><div class="k">结余</div><div class="v" id="mBal">¥0</div></div>
       </div>
+    </div>
+    <div class="card paste-card">
+      <h2>📋 智能粘贴 <span class="tag">微信 / 支付宝 / 银行短信</span></h2>
+      <textarea id="pasteBox" rows="3" placeholder="把支付通知粘到这里，例：微信支付：你已支付¥12.00，收款方：美团外卖"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn-mini" id="pasteRead">读剪贴板</button>
+        <button class="btn-mini primary" id="pasteGo">识别并填入</button>
+        <button class="btn-mini" id="pasteClear">清空</button>
+      </div>
+      <div id="pasteTip" class="paste-tip" style="display:none"></div>
     </div>
     <div class="card">
       <div class="seg2" style="margin-bottom:12px">
@@ -342,9 +365,10 @@ var MONEY_ICONS = {'餐饮':'🍚','交通':'🚌','住宿':'🏠','学习':'�
 var MONEY_KEY = 'dsh_ledger_v1';
 var MONEY_CSV_HEADER = '日期,类型,分类,金额,支付方式,备注';
 
-function moneyRecord(type, cat, amount, date, memo){
+function moneyRecord(type, cat, amount, date, memo, pay){
   return { id: uid(), date: date || todayStr(), type: type === '收入' ? '收入' : '支出',
-    category: cat || '其他支出', amount: round2(Math.abs(Number(amount)||0)), memo: (memo||'').slice(0,40) };
+    category: cat || '其他支出', amount: round2(Math.abs(Number(amount)||0)),
+    memo: (memo||'').slice(0,40), pay: (pay||'').slice(0,10) };
 }
 function moneySummarize(list, month){
   var inc = 0, exp = 0;
@@ -358,7 +382,7 @@ function moneySummarize(list, month){
 function moneyToCsv(list){
   var lines = [MONEY_CSV_HEADER];
   list.slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; }).forEach(function(e){
-    lines.push([e.date,e.type,e.category,e.amount,'',e.memo].map(csvEscape).join(','));
+    lines.push([e.date,e.type,e.category,e.amount,e.pay||'',e.memo].map(csvEscape).join(','));
   });
   return lines.join('\r\n') + '\r\n';
 }
@@ -370,10 +394,82 @@ function moneyParseCsv(text){
     var date = (v[0]||'').trim(), type = (v[1]||'').trim();
     var amt = parseFloat(String(v[3]||'').replace(/[¥,\s]/g,''));
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || (type !== '支出' && type !== '收入') || !isFinite(amt)) continue;
-    out.push(moneyRecord(type, (v[2]||'').trim(), amt, date, (v[5]||'').trim()));
+    out.push(moneyRecord(type, (v[2]||'').trim(), amt, date, (v[5]||'').trim(), (v[4]||'').trim()));
   }
   return out;
 }
+// ══════════ 智能粘贴解析（微信/支付宝/银行短信）══════════
+var PAY_CATS = {
+  '餐饮': ['美团','饿了么','星巴克','肯德基','麦当劳','瑞幸','蜜雪','海底捞','食堂','饭店','烧烤','奶茶','咖啡','外卖','餐'],
+  '交通': ['滴滴','地铁','公交','高铁','12306','加油','停车','打车','单车','哈啰','机票','出行'],
+  '购物': ['淘宝','京东','拼多多','天猫','超市','便利店','盒马','永辉','沃尔玛','全家','罗森','商城'],
+  '娱乐': ['电影','游戏','steam','网易云','腾讯视频','爱奇艺','B站','KTV','演出','门票'],
+  '住宿': ['房租','物业','水电','燃气','宽带','酒店','民宿'],
+  '医疗': ['医院','药店','挂号','诊所','体检'],
+  '学习': ['书店','得到','网课','课程','考试','培训','学费'],
+  '通讯': ['话费','流量','中国移动','中国联通','中国电信']
+};
+var PAY_EXP = ['支付','付款','消费','支出','扣款','转出','已付','扣除','缴费','购买'];
+var PAY_INC = ['收款','收入','入账','退款','转入','到账','返现','退回'];
+
+function payAmount(text){
+  var pats = [/[¥￥]\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})|\d+(?:\.\d{1,2})?)/,
+              /人民币\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})|\d+(?:\.\d{1,2})?)/,
+              /(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})|\d+(?:\.\d{1,2})?)\s*元/];
+  for (var i = 0; i < pats.length; i++){
+    var m = text.match(pats[i]);
+    if (m) return parseFloat(m[1].replace(/,/g, ''));
+  }
+  return null;
+}
+function payDate(text){
+  var m = text.match(/(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})/);
+  if (m) return m[1] + '-' + pad2(m[2]) + '-' + pad2(m[3]);
+  m = text.match(/(\d{1,2})月(\d{1,2})日/);
+  if (m) return new Date().getFullYear() + '-' + pad2(m[1]) + '-' + pad2(m[2]);
+  var d = new Date();
+  if (text.indexOf('昨天') >= 0) d = new Date(d.getTime() - 86400000);
+  else if (text.indexOf('前天') >= 0) d = new Date(d.getTime() - 2 * 86400000);
+  return todayStr(d);
+}
+function payMerchant(text){
+  var pats = [/(?:收款方|商户|商家|收款人|交易对方|对方)[:：\s]*([^\s,，。；;]+)/,
+              /(?:在|于)\s*([^\s,，。]{2,12}?)\s*(?:消费|支付|付款)/];
+  for (var i = 0; i < pats.length; i++){
+    var m = text.match(pats[i]);
+    if (m && m[1] && !/^\d/.test(m[1])) return m[1];
+  }
+  return '';
+}
+function payCat(text, isIncome){
+  var keys = Object.keys(PAY_CATS);
+  for (var i = 0; i < keys.length; i++){
+    var ws = PAY_CATS[keys[i]];
+    for (var j = 0; j < ws.length; j++){
+      if (text.indexOf(ws[j]) >= 0) return keys[i];
+    }
+  }
+  return isIncome ? '其他收入' : '其他支出';
+}
+function payParse(text){
+  var raw = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!raw) return null;
+  var amount = payAmount(raw);
+  if (amount === null) return null;
+  var inc = 0, exp = 0, i;
+  for (i = 0; i < PAY_INC.length; i++) if (raw.indexOf(PAY_INC[i]) >= 0) inc++;
+  for (i = 0; i < PAY_EXP.length; i++) if (raw.indexOf(PAY_EXP[i]) >= 0) exp++;
+  var type = inc > exp ? '收入' : '支出';
+  var merchant = payMerchant(raw);
+  var pay = raw.indexOf('微信') >= 0 ? '微信' : (raw.indexOf('支付宝') >= 0 ? '支付宝' : '');
+  var cat = payCat(raw + ' ' + merchant, type === '收入');
+  return {
+    date: payDate(raw), type: type, category: cat,
+    amount: round2(amount), pay: pay, merchant: merchant,
+    memo: (merchant || raw).slice(0, 40)
+  };
+}
+
 function mergeByKey(a, b, keyFn){
   var seen = {}, out = [], all = a.concat(b);
   for (var i = 0; i < all.length; i++){
@@ -611,6 +707,7 @@ function zipStore(files){
 
   // ══════════ 记账 ══════════
   var mstate = {records: [], type: '支出', category: '餐饮'};
+  var pendingPay = '';
   function mLoad(){ try { return JSON.parse(localStorage.getItem(MONEY_KEY) || '[]'); } catch(e){ return []; } }
   function mSave(){ try { localStorage.setItem(MONEY_KEY, JSON.stringify(mstate.records)); } catch(e){ toast('保存失败：存储已满'); } }
 
@@ -671,7 +768,8 @@ function zipStore(files){
   $('mSave').onclick = function(){
     var amt = parseFloat($('mAmount').value);
     if (!amt || amt <= 0){ toast('先输入金额'); $('mAmount').focus(); return; }
-    var rec = moneyRecord(mstate.type, mstate.category, amt, $('mDate').value || todayStr(), $('mMemo').value);
+    var rec = moneyRecord(mstate.type, mstate.category, amt, $('mDate').value || todayStr(), $('mMemo').value, pendingPay);
+    pendingPay = '';
     mstate.records = mstate.records.concat([rec]);
     mSave(); renderMStats(); renderMList();
     $('mAmount').value = ''; $('mMemo').value = '';
@@ -679,6 +777,60 @@ function zipStore(files){
     if (navigator.vibrate) navigator.vibrate(12);
   };
   $('mAmount').addEventListener('keydown', function(ev){ if (ev.key === 'Enter') $('mSave').click(); });
+
+  // ══════════ 智能粘贴 ══════════
+  function pasteFill(rec){
+    setMType(rec.type);
+    mstate.category = rec.category;
+    pendingPay = rec.pay || '';
+    renderMChips();
+    $('mAmount').value = rec.amount;
+    $('mDate').value = rec.date;
+    $('mMemo').value = rec.memo || '';
+    var tip = $('pasteTip');
+    tip.style.display = 'block';
+    tip.className = 'paste-tip';
+    tip.innerHTML = '已识别：<b>' + rec.type + '</b> · <b>' + rec.category + '</b> · <b>¥' + rec.amount +
+      '</b>' + (rec.pay ? ' · ' + rec.pay : '') + ' · ' + rec.date +
+      '<br>确认无误后，点下面「记一笔」保存。';
+  }
+  function pasteHandle(){
+    var txt = $('pasteBox').value;
+    if (!txt || !txt.trim()){ toast('先粘贴一段支付通知'); return; }
+    var rec = payParse(txt);
+    var tip = $('pasteTip');
+    if (!rec){
+      tip.style.display = 'block';
+      tip.className = 'paste-tip err';
+      tip.textContent = '没识别出金额。请确认文本里有「¥12.00」或「12.00元」这样的金额。';
+      return;
+    }
+    pasteFill(rec);
+    if (navigator.vibrate) navigator.vibrate(10);
+  }
+  $('pasteGo').onclick = pasteHandle;
+  $('pasteClear').onclick = function(){ $('pasteBox').value = ''; $('pasteTip').style.display = 'none'; };
+  $('pasteRead').onclick = function(){
+    if (!navigator.clipboard || !navigator.clipboard.readText){ toast('这个浏览器不支持读剪贴板，请手动长按粘贴'); return; }
+    navigator.clipboard.readText().then(function(t){
+      if (!t || !t.trim()){ toast('剪贴板是空的'); return; }
+      $('pasteBox').value = t;
+      pasteHandle();
+    }).catch(function(){ toast('没有剪贴板权限，请手动长按粘贴'); });
+  };
+  $('pasteBox').addEventListener('paste', function(){ setTimeout(pasteHandle, 60); });
+  // 支持快捷指令：?p=<通知文字>
+  (function(){
+    var q = location.search.replace(/^\?/, '');
+    if (!q) return;
+    var p = '';
+    q.split('&').forEach(function(kv){
+      var i = kv.indexOf('=');
+      if (i < 0) return;
+      if (kv.slice(0, i) === 'p'){ try { p = decodeURIComponent(kv.slice(i + 1)); } catch(e){ p = kv.slice(i + 1); } }
+    });
+    if (p){ $('pasteBox').value = p; show('money'); setTimeout(pasteHandle, 120); }
+  })();
   $('mExport').onclick = function(){
     if (!mstate.records.length){ toast('还没有记录'); return; }
     download('记账数据_' + todayStr().replace(/-/g,'') + '.csv', moneyToCsv(mstate.records));
