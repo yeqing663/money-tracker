@@ -277,6 +277,26 @@
       </div>
       <div id="planOut" class="plan-out" style="display:none"></div>
     </div>
+    <div class="card">
+      <h2>🏋️ 训练打卡 <span class="tag" id="tlTag">本月 0 次</span></h2>
+      <div class="chips" id="tlDays" style="margin-bottom:10px"></div>
+      <div class="row">
+        <div class="field"><label>时长（分钟）</label>
+          <select id="tlMin"><option>30</option><option>45</option><option selected>60</option>
+            <option>90</option><option>20</option></select></div>
+        <div class="field"><label>备注（选填）</label>
+          <input id="tlNote" type="text" maxlength="30" placeholder="卧推加重量"></div>
+      </div>
+      <button class="save" id="tlSave" style="margin-top:12px">打 卡</button>
+      <div id="tlStats" class="plan-out"></div>
+      <div class="list" id="tlList" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn-mini" id="tlExport">导出 CSV</button>
+        <button class="btn-mini" id="tlCopy">复制 CSV</button>
+        <button class="btn-mini" id="tlImport">导入 CSV</button>
+      </div>
+      <input type="file" id="tlFile" accept=".csv,text/csv" style="display:none">
+    </div>
     <div class="card" style="padding:12px 14px">
       <div class="row">
         <div class="field"><label>日期</label><input id="hDate" type="date"></div>
@@ -649,6 +669,53 @@ function planToText(p){
     p.tips.forEach(function(t){ L.push('· ' + t); });
   }
   return L.join('\n');
+}
+
+// ══════════ 训练打卡 ══════════
+var TRAIN_LOG_KEY = 'dsh_train_log_v1';
+var TRAIN_LOG_CSV_HEADER = '日期,部位,时长(分钟),备注';
+
+function trainLogRecord(date, part, minutes, note){
+  return { id: uid(), date: date || todayStr(), part: part || '自由训练',
+           minutes: Math.max(0, Number(minutes) || 0), note: (note || '').slice(0, 30) };
+}
+function trainLogSummarize(list, month){
+  month = month || todayStr().slice(0, 7);
+  var inMonth = list.filter(function(e){ return String(e.date).slice(0, 7) === month; });
+  var mins = 0, parts = {};
+  inMonth.forEach(function(e){
+    mins += Number(e.minutes) || 0;
+    parts[e.part] = (parts[e.part] || 0) + 1;
+  });
+  // 连续打卡周数（按 ISO 周粗略计算）
+  var dates = list.map(function(e){ return e.date; }).sort();
+  var weeks = {};
+  dates.forEach(function(d){
+    var dt = new Date(d + 'T00:00:00');
+    var onejan = new Date(dt.getFullYear(), 0, 1);
+    var wk = Math.ceil(((dt - onejan) / 86400000 + onejan.getDay() + 1) / 7);
+    weeks[dt.getFullYear() + '-W' + wk] = 1;
+  });
+  return { count: inMonth.length, minutes: mins, parts: parts,
+           total: list.length, weeks: Object.keys(weeks).length };
+}
+function trainLogToCsv(list){
+  var lines = [TRAIN_LOG_CSV_HEADER];
+  list.slice().sort(function(a, b){ return a.date < b.date ? -1 : 1; }).forEach(function(e){
+    lines.push([e.date, e.part, e.minutes, e.note].map(csvEscape).join(','));
+  });
+  return lines.join('\r\n') + '\r\n';
+}
+function trainLogParseCsv(text){
+  var rows = parseCsvRows(text), out = [];
+  for (var r = 1; r < rows.length; r++){
+    var v = rows[r];
+    if (!v || v.length < 3) continue;
+    var date = (v[0] || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    out.push(trainLogRecord(date, (v[1] || '').trim(), v[2], (v[3] || '').trim()));
+  }
+  return out;
 }
 
 function mergeByKey(a, b, keyFn){
@@ -1309,6 +1376,7 @@ function zipStore(files){
   $('genTrain').onclick = function(){
     var p = trainPlan(planOpts());
     planSave(p); renderPlan(p, todayStr());
+    tlRenderDays();
     toast('训练计划已生成');
   };
   $('genDiet').onclick = function(){
@@ -1329,6 +1397,102 @@ function zipStore(files){
     var savedPlan = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null');
     if (savedPlan && savedPlan.plan){ renderPlan(savedPlan.plan, savedPlan.stamp); }
   } catch(e){}
+
+  // ══════════ 训练打卡 ══════════
+  var tstate = { records: [], part: '' };
+  function tlLoad(){ try { return JSON.parse(localStorage.getItem(TRAIN_LOG_KEY) || '[]'); } catch(e){ return []; } }
+  function tlSave(){ try { localStorage.setItem(TRAIN_LOG_KEY, JSON.stringify(tstate.records)); } catch(e){} }
+  function tlDayOptions(){
+    var opts = [];
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null'); } catch(e){}
+    if (saved && saved.plan && saved.plan.type === 'train'){
+      saved.plan.weeks.forEach(function(d){ opts.push(d.day + ' ' + String(d.part).split(' · ')[0]); });
+    } else {
+      opts = ['推', '拉', '腿', '有氧'];
+    }
+    opts.push('自由训练');
+    return opts;
+  }
+  function tlRenderDays(){
+    var box = $('tlDays'), opts = tlDayOptions();
+    if (!tstate.part || opts.indexOf(tstate.part) < 0) tstate.part = opts[0];
+    box.innerHTML = '';
+    opts.forEach(function(o){
+      var b = document.createElement('button');
+      b.className = 'chip' + (o === tstate.part ? ' on' : '');
+      b.textContent = o;
+      b.onclick = function(){ tstate.part = o; tlRenderDays(); };
+      box.appendChild(b);
+    });
+  }
+  function tlRender(){
+    var s = trainLogSummarize(tstate.records);
+    $('tlTag').textContent = '本月 ' + s.count + ' 次';
+    var parts = Object.keys(s.parts).map(function(k){
+      return '<span class="chip">' + k + ' ×' + s.parts[k] + '</span>';
+    }).join('');
+    $('tlStats').innerHTML = '<div class="plan-day"><h3>本月统计 <span>共 ' + s.count + ' 次 · ' +
+      s.minutes + ' 分钟</span></h3><div class="chips" style="margin-top:6px">' +
+      (parts || '<span class="chip">还没打卡</span>') + '</div></div>';
+    var list = tstate.records.slice().sort(function(a, b){ return a.date < b.date ? 1 : -1; });
+    var box = $('tlList');
+    if (!list.length){
+      box.innerHTML = '<div class="empty">还没有打卡记录。上面选部位，点「打卡」。</div>';
+      return;
+    }
+    box.innerHTML = '';
+    list.slice(0, 20).forEach(function(e){
+      var row = document.createElement('div'); row.className = 'item';
+      row.innerHTML = '<div class="ico">🏋️</div><div class="mid"><div class="t1">' + e.part +
+        '</div><div class="t2">' + e.date + ' · ' + e.minutes + ' 分钟' +
+        (e.note ? ' · ' + e.note.replace(/</g, '&lt;') : '') + '</div></div>';
+      var del = document.createElement('button');
+      del.className = 'del'; del.textContent = '✕';
+      del.onclick = function(){
+        if (!confirm('删除 ' + e.date + ' ' + e.part + ' 的打卡？')) return;
+        tstate.records = tstate.records.filter(function(x){ return x.id !== e.id; });
+        tlSave(); tlRender();
+      };
+      row.appendChild(del);
+      box.appendChild(row);
+    });
+  }
+  $('tlSave').onclick = function(){
+    var rec = trainLogRecord(todayStr(), tstate.part, $('tlMin').value, $('tlNote').value);
+    tstate.records = tstate.records.concat([rec]);
+    tlSave(); tlRender();
+    $('tlNote').value = '';
+    toast('已打卡：' + rec.part + ' ' + rec.minutes + ' 分钟');
+  };
+  $('tlExport').onclick = function(){
+    if (!tstate.records.length){ toast('还没有记录'); return; }
+    download('训练打卡_' + todayStr().replace(/-/g, '') + '.csv', trainLogToCsv(tstate.records));
+    toast('已导出 ' + tstate.records.length + ' 条');
+  };
+  $('tlCopy').onclick = function(){
+    if (!tstate.records.length){ toast('还没有记录'); return; }
+    copyText(trainLogToCsv(tstate.records), '已复制');
+  };
+  $('tlImport').onclick = function(){ $('tlFile').click(); };
+  $('tlFile').onchange = function(ev){
+    var f = ev.target.files && ev.target.files[0]; if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function(){
+      var inc = trainLogParseCsv(rd.result);
+      if (!inc.length){ toast('没读到有效记录'); return; }
+      var before = tstate.records.length;
+      tstate.records = mergeByKey(tstate.records, inc, function(e){
+        return [e.date, e.part, e.minutes, e.note].join('|');
+      });
+      tlSave(); tlRender();
+      toast('导入 ' + inc.length + ' 条，新增 ' + (tstate.records.length - before) + ' 条');
+      ev.target.value = '';
+    };
+    rd.readAsText(f, 'UTF-8');
+  };
+  tstate.records = tlLoad();
+  tlRenderDays(); tlRender();
 
   $('hExport').onclick = function(){
     if (!hstate.records.length){ toast('还没有记录'); return; }
