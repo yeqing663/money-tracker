@@ -302,6 +302,11 @@
         <div style="flex:1;font-size:12.5px;color:#5A6270;line-height:1.7" id="fScoreHint"></div>
       </div>
       <div id="fCheckList" style="margin-top:10px"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn-mini primary" id="fReport">生成本月财务报告</button>
+        <button class="btn-mini" id="fExportData">导出财务数据</button>
+      </div>
+      <div id="fReportOut" style="display:none;margin-top:12px"></div>
     </div>
 
     <div class="card">
@@ -1973,6 +1978,83 @@ function zipStore(files){
     fRenderGoals(); fRenderCheck(); toast('已添加目标');
   };
   fLoadAll();
+
+  // ══════════ 财务月报 / 数据导出 ══════════
+  function fBuildReport(){
+    var m = fMonth(), s = moneySummarize(mstate.records, m);
+    var spend = fSpendByCat(m), h = fHealth(), nw = fNetWorth();
+    var cats = Object.keys(spend).map(function(c){
+      return { cat: c, amount: spend[c], budget: Number(fstate.budgets[c]) || 0,
+               over: (Number(fstate.budgets[c]) || 0) > 0 && spend[c] > (Number(fstate.budgets[c]) || 0) };
+    }).sort(function(a, b){ return b.amount - a.amount; });
+    var goals = fstate.goals.map(function(g){
+      var t = Number(g.target) || 0, v = Number(g.saved) || 0;
+      return { name: g.name, target: t, saved: v, pct: t > 0 ? Math.round(v / t * 1000) / 10 : 0,
+               left: Math.max(0, round2(t - v)) };
+    });
+    return { month: m, income: s.income, expense: s.expense, balance: s.balance,
+             rate: s.income > 0 ? Math.round((s.income - s.expense) / s.income * 1000) / 10 : 0,
+             cats: cats, net: nw, goals: goals, health: h };
+  }
+  function fReportText(r){
+    var L = ['【财务月报】' + r.month];
+    L.push('收入 ¥' + r.income + ' · 支出 ¥' + r.expense + ' · 结余 ¥' + r.balance + ' · 储蓄率 ' + r.rate + '%');
+    L.push('');
+    L.push('【分类支出】');
+    r.cats.forEach(function(c){
+      L.push('  ' + c.cat + ' ¥' + c.amount + (c.budget ? ' / 预算 ¥' + c.budget + (c.over ? '  ⚠️超支' : '') : ''));
+    });
+    L.push('');
+    L.push('【资产】资产 ¥' + r.net.asset + ' · 负债 ¥' + r.net.debt + ' · 净资产 ¥' + r.net.net);
+    if (r.goals.length){
+      L.push('');
+      L.push('【攒钱目标】');
+      r.goals.forEach(function(g){ L.push('  ' + g.name + ' ¥' + g.saved + ' / ¥' + g.target + '（' + g.pct + '%）'); });
+    }
+    L.push('');
+    L.push('【财务体检】' + r.health.score + ' 分 · ' + r.health.level);
+    r.health.items.forEach(function(t){ L.push('  ⚠️ ' + t); });
+    if (!r.health.items.length) L.push('  各项指标正常');
+    return L.join('\n');
+  }
+  function fRenderReport(){
+    var r = fBuildReport();
+    var box = $('fReportOut');
+    box.style.display = 'block';
+    var rows = r.cats.map(function(c){
+      var pct = c.budget > 0 ? Math.min(100, Math.round(c.amount / c.budget * 100)) : 0;
+      var cls = c.over ? 'over' : (c.budget > 0 && pct > 80 ? 'warn' : '');
+      return '<div class="fin-row"><span>' + c.cat + ' ¥' + c.amount +
+        (c.budget ? ' / ¥' + c.budget : '') + (c.over ? ' ⚠️超支' : '') + '</span></div>' +
+        (c.budget ? '<div class="bar"><i class="' + cls + '" style="width:' + pct + '%"></i></div>' : '');
+    }).join('');
+    var goals = r.goals.map(function(g){
+      return '<div class="fin-row"><span>' + g.name + '</span><span>¥' + g.saved + ' / ¥' + g.target +
+        '（' + g.pct + '%）</span></div>';
+    }).join('');
+    box.innerHTML =
+      '<div class="plan-day"><h3>' + r.month + ' 月报 <span>储蓄率 ' + r.rate + '%</span></h3>' +
+      '<div class="kv"><span>收入</span><b>¥' + r.income + '</b></div>' +
+      '<div class="kv"><span>支出</span><b>¥' + r.expense + '</b></div>' +
+      '<div class="kv"><span>结余</span><b class="' + (r.balance >= 0 ? 'ok' : 'bad') + '">¥' + r.balance + '</b></div>' +
+      '<div class="kv"><span>净资产</span><b>¥' + r.net.net + '</b></div></div>' +
+      '<div class="plan-day"><h3>分类支出与预算</h3>' + rows + '</div>' +
+      (goals ? '<div class="plan-day"><h3>攒钱目标</h3>' + goals + '</div>' : '') +
+      '<div class="plan-tip">财务体检 ' + r.health.score + ' 分 · ' + r.health.level +
+      (r.health.items.length ? '<br>· ' + r.health.items.join('<br>· ') : '<br>· 各项指标正常') + '</div>' +
+      '<div class="row" style="margin-top:10px"><button class="btn-mini" id="fReportCopy">复制月报</button></div>';
+    $('fReportCopy').onclick = function(){ copyText(fReportText(r), '月报已复制'); };
+  }
+  $('fReport').onclick = function(){
+    if (!mstate.records.length){ toast('先记几笔再生成月报'); return; }
+    fRenderReport(); toast('月报已生成');
+  };
+  $('fExportData').onclick = function(){
+    var data = { budgets: fstate.budgets, assets: fstate.assets, goals: fstate.goals,
+                 records: mstate.records, exportedAt: todayStr() };
+    download('财务数据_' + todayStr().replace(/-/g, '') + '.json', JSON.stringify(data, null, 2));
+    toast('已导出，可用于生成 PDF 报表');
+  };
 
   // ══════════ 初始化 ══════════
   $('exportAll').onclick = function(){
