@@ -174,6 +174,11 @@
   .badge{font-size:11px;padding:2px 7px;border-radius:6px;background:#EDF1F5;color:#5A6270}
   .badge.ok{background:#E7F5EC;color:#1E7B45}
   .badge.bad{background:#FDECEA;color:#C0392B}
+  .pie-wrap{display:flex;gap:16px;align-items:center}
+  .pie{width:116px;height:116px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px #EEE8DE}
+  .pie-legend{flex:1;font-size:12px;color:#4A5462;line-height:1.95}
+  .pie-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:middle}
+  .pie-legend .p{color:#8A929C;margin-left:4px}
 </style>
 </head>
 <body>
@@ -267,6 +272,14 @@
     <div class="card">
       <h2>📊 分类预算 <span class="tag" id="fBudgetTag">本月</span></h2>
       <div id="fBudgetList"></div>
+    </div>
+
+    <div class="card">
+      <h2>🥧 支出结构 <span class="tag" id="fPieTag"></span></h2>
+      <div class="pie-wrap">
+        <div class="pie" id="fPie"></div>
+        <div class="pie-legend" id="fPieLegend"></div>
+      </div>
     </div>
 
     <div class="card">
@@ -1754,6 +1767,35 @@ function zipStore(files){
     if (hs.avgStart && (hhmmToMin(hs.avgStart) === null ? false : (hhmmToMin(hs.avgStart) < 720))) tips.push('平均入睡 ' + hs.avgStart + '，已过午夜；先把起床时间固定住。');
     if (hs.n >= 3 && hs.minutes < 150) tips.push('近 7 天运动 ' + hs.minutes + ' 分钟，低于每周 150 分钟。');
     if (hs.missBreakfast >= 2) tips.push('近 7 天有 ' + hs.missBreakfast + ' 天没吃早餐。');
+    // 财务提醒：预算超支 / 净资产为负（放在最前面）
+    try {
+      var budgets = (typeof fstate !== 'undefined' && fstate.budgets) ? fstate.budgets : {};
+      var spendNow = {};
+      mstate.records.forEach(function(e){
+        if (e.type === '支出' && String(e.date).slice(0, 7) === month){
+          spendNow[e.category] = (spendNow[e.category] || 0) + e.amount;
+        }
+      });
+      var overTips = [];
+      Object.keys(budgets).forEach(function(c){
+        var b = Number(budgets[c]) || 0;
+        var used = spendNow[c] || 0;
+        if (b > 0 && used > b){
+          overTips.push(c + ' 超支 ' + Math.round((used - b) / b * 100) + '%（¥' + round2(used) + '/¥' + b + '）');
+        }
+      });
+      if (overTips.length) tips.unshift('预算提醒：' + overTips.slice(0, 2).join('、'));
+      if (typeof fNetWorth === 'function'){
+        var nw0 = fNetWorth();
+        if (nw0.net < 0) tips.unshift('净资产 ¥' + nw0.net + '，负债高于资产，先还高息负债。');
+      }
+      var gl = (typeof fstate !== 'undefined' && fstate.goals) ? fstate.goals : [];
+      gl.forEach(function(g){
+        var t = Number(g.target) || 0, v = Number(g.saved) || 0;
+        if (t > 0 && v / t >= 0.8 && v < t) tips.push('目标「' + g.name + '」差 ¥' + round2(t - v) + ' 达成。');
+      });
+    } catch(e){}
+
     var box = $('homeTips');
     box.innerHTML = '';
     if (!tips.length) tips.push('数据都很健康，继续保持记录。');
@@ -1953,6 +1995,36 @@ function zipStore(files){
     });
   }
 
+  function fRenderPie(){
+    var box = $('fPie'), legend = $('fPieLegend');
+    if (!box || !legend) return;
+    var cats = fSpendByCat(fMonth());
+    var list = Object.keys(cats).map(function(k){ return { name: k, v: cats[k] }; })
+      .sort(function(a, b){ return b.v - a.v; });
+    var total = list.reduce(function(a, b){ return a + b.v; }, 0);
+    if (!total){
+      box.style.background = '#EEE8DE';
+      legend.innerHTML = '<div style="color:#8A929C">本月还没有支出记录</div>';
+      $('fPieTag').textContent = '';
+      return;
+    }
+    var COLORS = ['#1B4B6B', '#2A6F97', '#E08A4B', '#C0392B', '#7A5C3A', '#1E7B45', '#8E6C88', '#5A6270', '#A0642B'];
+    var stops = [], acc = 0;
+    list.forEach(function(x, i){
+      var from = acc / total * 100;
+      acc += x.v;
+      var to = acc / total * 100;
+      stops.push(COLORS[i % COLORS.length] + ' ' + from.toFixed(2) + '% ' + to.toFixed(2) + '%');
+    });
+    box.style.background = 'conic-gradient(' + stops.join(',') + ')';
+    legend.innerHTML = list.map(function(x, i){
+      var pct = Math.round(x.v / total * 1000) / 10;
+      return '<div><i style="background:' + COLORS[i % COLORS.length] + '"></i>' + x.name +
+        '<span class="p">¥' + x.v + ' · ' + pct + '%</span></div>';
+    }).join('');
+    $('fPieTag').textContent = '共 ¥' + round2(total);
+  }
+
   function renderFin(){
     if (!$('fBudgetList')) return;
     var s = moneySummarize(mstate.records, fMonth());
@@ -1960,7 +2032,7 @@ function zipStore(files){
       var rate = s.income > 0 ? Math.round((s.income - s.expense) / s.income * 100) : 0;
       $('fRate').textContent = s.income > 0 ? rate + '%' : '—';
     }
-    fRenderBudgets(); fRenderAssets(); fRenderGoals(); fRenderCheck(); fRenderChart();
+    fRenderBudgets(); fRenderAssets(); fRenderGoals(); fRenderCheck(); fRenderChart(); fRenderPie();
   }
 
   $('faAdd').onclick = function(){
