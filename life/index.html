@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#4C6FFF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="生活">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>生活 · 记录全部</title>
+<style>
+  :root{
+    --bg:#F5F6FA; --card:#fff; --ink:#1E2433; --sub:#7A8394; --line:#E6E9F0;
+    --primary:#4C6FFF; --primary-soft:#EDF1FF;
+    --good:#12A06A; --good-soft:#E7F7F0;
+    --bad:#E23D3D; --bad-soft:#FDECEC;
+    --warn:#C98A1B; --warn-soft:#FFF6E5;
+    --radius:18px;
+    --shadow:0 1px 2px rgba(24,32,54,.04);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink); font-size:15px; line-height:1.55;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    padding-bottom:92px;
+  }
+  h1,h2,h3{margin:0;font-weight:600}
+  .app{max-width:760px;margin:0 auto;padding:0 14px}
+  .topbar{position:sticky;top:0;z-index:20;background:rgba(245,246,250,.94);
+    backdrop-filter:saturate(180%) blur(10px);padding:14px 2px 8px;display:flex;
+    align-items:flex-start;justify-content:space-between;gap:10px}
+  .topbar h1{font-size:19px;letter-spacing:.3px}
+  .topbar .sub{font-size:12px;color:var(--sub);margin-top:2px}
+  .streak{background:var(--warn-soft);color:#8A5A10;font-size:12px;padding:5px 10px;border-radius:20px;flex:none}
+  .card{background:var(--card);border-radius:var(--radius);padding:15px;margin-bottom:12px;
+    box-shadow:var(--shadow);border:1px solid rgba(230,233,240,.7)}
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px}
+  .card-head h2{font-size:14.5px;display:flex;align-items:center;gap:6px}
+  .card-head .more{font-size:12.5px;color:var(--primary);background:none;border:0;padding:4px;font-family:inherit}
+  .tag{font-size:11.5px;color:var(--sub);background:#F2F4F9;border-radius:8px;padding:3px 8px;flex:none}
+  .tag.hot{background:var(--bad-soft);color:var(--bad)}
+  .tag.warn{background:var(--warn-soft);color:var(--warn)}
+  .tag.good{background:var(--good-soft);color:var(--good)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .stat{background:#F8F9FC;border-radius:14px;padding:10px 12px}
+  .stat .k{font-size:11.5px;color:var(--sub)}
+  .stat .v{font-size:18px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+  .stat .v.small{font-size:15px}
+  .empty{padding:18px 8px;text-align:center;color:var(--sub);font-size:13px;line-height:1.7}
+  .empty .big{display:block;font-size:24px;margin-bottom:4px}
+  .row{display:flex;align-items:center;gap:8px}
+  .input,select,textarea{font-family:inherit;font-size:14.5px;color:var(--ink);
+    background:#F8F9FC;border:1px solid var(--line);border-radius:11px;padding:10px 12px;width:100%}
+  select{appearance:none}
+  textarea{resize:vertical;min-height:64px;line-height:1.6}
+  .btn{border:0;border-radius:12px;padding:12px 16px;font-size:14.5px;font-family:inherit;
+    font-weight:600;background:#F2F4F9;color:var(--ink);width:100%}
+  .btn.primary{background:var(--primary);color:#fff}
+  .btn.small{width:auto;padding:8px 12px;font-size:13px;font-weight:500}
+  .btn.ghost{background:#fff;border:1px solid var(--line);font-weight:500}
+  .btn.danger{background:var(--bad-soft);color:var(--bad)}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:11px;padding:8px 12px;
+    font-size:13.5px;font-family:inherit;color:var(--ink)}
+  .chip.on{background:var(--primary-soft);border-color:var(--primary);color:var(--primary);font-weight:600}
+  .chip.sync{display:flex;align-items:center;gap:6px}
+  .seg{display:flex;background:#F2F4F9;border-radius:12px;padding:3px;margin-bottom:10px}
+  .seg button{flex:1;border:0;background:transparent;padding:9px;border-radius:10px;
+    font-size:13.5px;font-family:inherit;color:var(--sub)}
+  .seg button.on{background:#fff;color:var(--primary);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .list-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #F1F3F8}
+  .list-item:last-child{border-bottom:0}
+  .list-item .ic{width:34px;height:34px;border-radius:11px;background:#F2F4F9;display:flex;
+    align-items:center;justify-content:center;font-size:16px;flex:none}
+  .list-item .mid{flex:1;min-width:0}
+  .list-item .t1{font-size:14px;font-weight:600;display:block}
+  .list-item .t2{font-size:11.5px;color:var(--sub);display:block;margin-top:1px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .list-item .amt{font-size:14px;font-weight:700;flex:none;font-variant-numeric:tabular-nums}
+  .list-item .amt.exp{color:var(--bad)}
+  .list-item .amt.inc{color:var(--good)}
+  .del{border:0;background:none;color:#C3C8D4;font-size:15px;padding:4px 2px;flex:none}
+  .bar{height:8px;background:#EEF1F7;border-radius:5px;overflow:hidden;margin-top:6px}
+  .bar>i{display:block;height:100%;background:var(--primary);border-radius:5px;transition:width .25s}
+  .bar>i.good{background:var(--good)}
+  .bar>i.warn{background:#E0A93B}
+  .bar>i.bad{background:var(--bad)}
+  .dash{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .dash .d{background:#F8F9FC;border-radius:13px;padding:9px 6px;text-align:center}
+  .dash .d .e{font-size:18px}
+  .dash .d .v{font-size:15px;font-weight:700;margin-top:1px;font-variant-numeric:tabular-nums}
+  .dash .d .k{font-size:10.5px;color:var(--sub)}
+  .habits{display:flex;flex-wrap:wrap;gap:8px}
+  .habit{border:1px solid var(--line);border-radius:13px;padding:9px 11px;background:#fff;
+    display:flex;align-items:center;gap:7px;font-family:inherit;font-size:13.5px;color:var(--ink)}
+  .habit.on{background:var(--good-soft);border-color:#BEE7D6;color:#0B7A50}
+  .habit .s{font-size:11px;color:var(--sub)}
+  .habit.on .s{color:#2E9C74}
+  .todo-row{display:flex;align-items:center;gap:10px;padding:8px 0}
+  .todo-row input[type=text]{flex:1}
+  .check{width:26px;height:26px;border-radius:9px;border:1.5px solid #CFD5E2;background:#fff;
+    display:flex;align-items:center;justify-content:center;flex:none;font-size:14px;color:#fff;padding:0}
+  .check.on{background:var(--good);border-color:var(--good)}
+  .heat{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .heat .cell{aspect-ratio:1;border-radius:5px;background:#EEF1F7}
+  .heat .cell.l1{background:#D6E0FF}
+  .heat .cell.l2{background:#A9BEFF}
+  .heat .cell.l3{background:#7C9BFF}
+  .heat .cell.l4{background:#4C6FFF}
+  .heat .cell.today{outline:2px solid var(--primary);outline-offset:-2px}
+  .legend{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sub);margin-top:8px}
+  .legend i{width:10px;height:10px;border-radius:3px;background:#EEF1F7;display:inline-block}
+  .legend i.l2{background:#A9BEFF}
+  .legend i.l4{background:#4C6FFF}
+  .module-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .module{background:var(--card);border-radius:16px;padding:13px;border:1px solid rgba(230,233,240,.7);
+    box-shadow:var(--shadow);text-align:left;font-family:inherit;color:var(--ink);display:flex;gap:10px;align-items:flex-start}
+  .module .mi{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+    font-size:18px;flex:none;background:#F2F4F9}
+  .module .mt{font-size:14px;font-weight:600;display:block}
+  .module .ms{font-size:11.5px;color:var(--sub);display:block;margin-top:1px;line-height:1.4}
+  .panel{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column}
+  .panel[hidden]{display:none}
+  .panel-head{display:flex;align-items:center;gap:10px;padding:14px 16px;
+    background:rgba(245,246,250,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:2}
+  .panel-head h2{font-size:16.5px;flex:1}
+  .panel-head button{border:0;background:#fff;border-radius:10px;padding:7px 12px;font-size:13px;
+    font-family:inherit;color:var(--ink);box-shadow:var(--shadow)}
+  .panel-body{flex:1;overflow:auto;padding:12px 14px 40px;-webkit-overflow-scrolling:touch}
+  .fab{position:fixed;right:18px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:30;
+    border:0;border-radius:26px;background:var(--primary);color:#fff;font-size:15px;font-family:inherit;
+    font-weight:600;padding:13px 20px;box-shadow:0 8px 20px rgba(76,111,255,.32)}
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:25;background:#fff;border-top:1px solid var(--line);
+    display:flex;padding:6px 0 max(8px,env(safe-area-inset-bottom));max-width:760px;margin:0 auto}
+  .tabbar button{flex:1;border:0;background:transparent;padding:5px 2px;font-family:inherit;
+    font-size:11px;color:var(--sub);display:flex;flex-direction:column;align-items:center;gap:3px}
+  .tabbar button .ic{font-size:19px;line-height:1}
+  .tabbar button.on{color:var(--primary);font-weight:600}
+  .overlay{position:fixed;inset:0;z-index:50;background:rgba(20,26,40,.45);display:flex;align-items:center;justify-content:center;padding:20px}
+  .overlay[hidden]{display:none}
+  .dialog{background:#fff;border-radius:18px;padding:20px;width:min(88vw,360px)}
+  .dialog h3{font-size:16px;margin-bottom:8px}
+  .dialog p{font-size:13.5px;color:var(--sub);margin:0;line-height:1.7}
+  .dialog-actions{display:flex;gap:10px;margin-top:16px}
+  .toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:99;
+    background:rgba(24,30,44,.93);color:#fff;font-size:13px;padding:10px 16px;border-radius:20px;max-width:80%;text-align:center}
+  .mood-row{display:flex;gap:8px}
+  .mood{flex:1;border:1px solid var(--line);border-radius:13px;background:#fff;padding:9px 0;
+    font-size:20px;font-family:inherit;line-height:1.2}
+  .mood.on{background:var(--primary-soft);border-color:var(--primary)}
+  .photo-thumb{width:64px;height:64px;border-radius:10px;object-fit:cover;border:1px solid var(--line)}
+  .hint{font-size:12px;color:var(--sub);line-height:1.6;margin:6px 0 0}
+  .linkline{font-size:12.5px;color:var(--sub)}
+  .linkline a{color:var(--primary);text-decoration:none}
+  @media (prefers-color-scheme: dark){
+    :root{--bg:#10141C;--card:#171C26;--ink:#E7EAF1;--sub:#98A1B2;--line:#2A3140;
+      --primary:#7C93FF;--primary-soft:#1E2740;--good:#35C08A;--good-soft:#123328;
+      --bad:#FF7A7A;--bad-soft:#3A1D22;--warn:#E2B04A;--warn-soft:#3A2E17}
+    body{background:var(--bg)}
+    .topbar{background:rgba(16,20,28,.94)}
+    .tabbar,.btn.ghost,.chip,.habit,.panel-head button{background:#1C2330}
+    .stat,.dash .d,.module .mi,.list-item .ic,.seg,.input,select,textarea{background:#1F2634}
+    .seg button.on{background:#2A3346}
+    .heat .cell{background:#222937}
+    .heat .cell.l1{background:#2C3A5C}
+    .heat .cell.l2{background:#3C548C}
+    .heat .cell.l3{background:#5A76C4}
+    .heat .cell.l4{background:#7C93FF}
+    .bar{background:#252D3D}
+    .modal-bg{background:rgba(0,0,0,.6)}
+    .dialog{background:#1C2330}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div>
+      <h1 id="greet">今天</h1>
+      <div class="sub" id="todaySub"></div>
+    </div>
+    <div class="streak" id="streakTag">连续 0 天</div>
+  </header>
+
+  <!-- ═══ 今日 ═══ -->
+  <main class="view" id="v-home">
+    <section class="card">
+      <div class="card-head"><h2>📌 今日三件事</h2><button class="more" data-panel="todos">编辑</button></div>
+      <div id="homeTodos"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>✅ 习惯打卡</h2><button class="more" data-panel="habits">管理</button></div>
+      <div id="homeHabits" class="habits"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>心情</h2><button class="more" data-panel="journal">写日记</button></div>
+      <div class="mood-row" id="homeMood"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>今日概览</h2></div>
+      <div class="dash" id="homeDash"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>⏰ 到期提醒</h2><button class="more" data-panel="items">管理</button></div>
+      <div id="homeExpiring"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>💼 工作进度</h2><button class="more" data-panel="work">全部</button></div>
+      <div id="homeWork"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>📖 读书</h2><button class="more" data-panel="books">书架</button></div>
+      <div id="homeBooks"></div>
+    </section>
+  </main>
+
+  <!-- ═══ 记录 ═══ -->
+  <main class="view" id="v-modules" hidden>
+    <div class="module-grid" id="moduleGrid"></div>
+    <div class="card" style="margin-top:12px">
+      <p class="hint">数据只存在这台设备上。换手机前，去「我的 → 导出备份」保存一份 JSON。</p>
+    </div>
+  </main>
+
+  <!-- ═══ 回顾 ═══ -->
+  <main class="view" id="v-review" hidden>
+    <section class="card">
+      <div class="card-head"><h2>📊 近 7 天</h2><span class="tag" id="review7Tag"></span></div>
+      <div class="grid3" id="review7Grid"></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>🗓 记录热力图</h2><span class="tag">近 3 个月</span></div>
+      <div class="heat" id="heatGrid"></div>
+      <div class="legend"><span>少</span><i></i><i class="l2"></i><i class="l4"></i><span>多</span></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>📈 本月统计</h2><span class="tag" id="monthTag"></span></div>
+      <div id="monthStats"></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>支出趋势（近 14 天）</h2></div>
+      <div id="expenseTrend"></div>
+    </section>
+  </main>
+
+  <!-- ═══ 我的 ═══ -->
+  <main class="view" id="v-me" hidden>
+    <section class="card">
+      <div class="card-head"><h2>个人</h2></div>
+      <label style="font-size:12.5px;color:var(--sub)">昵称</label>
+      <input class="input" id="meName" maxlength="12" style="margin:6px 0 10px">
+      <label style="font-size:12.5px;color:var(--sub)">开始记录日期</label>
+      <input class="input" id="meStart" type="date" style="margin-top:6px">
+      <button class="btn primary" id="meSave" style="margin-top:12px">保存</button>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>数据</h2></div>
+      <button class="btn ghost" id="exportBackup" style="margin-bottom:8px">导出备份 JSON</button>
+      <button class="btn ghost" id="importBackup" style="margin-bottom:8px">恢复备份 JSON</button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+      <button class="btn ghost" id="syncFinance" style="margin-bottom:8px">同步「随手记」账单</button>
+      <button class="btn danger" id="clearAll">清空全部数据</button>
+      <p class="hint">导出文件包含所有记录与财务数据，请妥善保存。</p>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>安装到手机桌面</h2></div>
+      <p class="hint">
+        <b>iPhone</b>：Safari 打开本页 → 分享 → 添加到主屏幕<br>
+        <b>安卓</b>：Chrome 打开本页 → 右上角 ⋮ → 安装应用 / 添加到主屏幕<br>
+        安装后可以离线打开，数据仍在本地。
+      </p>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>其他</h2></div>
+      <p class="linkline">
+        <a href="https://yeqing663.github.io/money-tracker/finance/" target="_blank" rel="noopener">打开「随手记」详细记账 →</a><br>
+        <a href="https://yeqing663.github.io/money-tracker/" target="_blank" rel="noopener">打开「我的记录」看板 →</a>
+      </p>
+      <p class="hint">生活 App 版本 v1 · 纯本地存储，不上传、不联网。</p>
+    </section>
+  </main>
+</div>
+
+<button class="fab" id="fab">＋ 记录</button>
+
+<nav class="tabbar">
+  <button data-view="home" class="on"><span class="ic">🏠</span>今日</button>
+  <button data-view="modules"><span class="ic">✍️</span>记录</button>
+  <button data-view="review"><span class="ic">📊</span>回顾</button>
+  <button data-view="me"><span class="ic">⚙️</span>我的</button>
+</nav>
+
+<!-- 模块面板 -->
+<div class="panel" id="panel" hidden>
+  <div class="panel-head">
+    <h2 id="panelTitle">模块</h2>
+    <button id="panelClose">关闭</button>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+</div>
+
+<!-- 确认框 -->
+<div class="overlay" id="confirmOverlay" hidden>
+  <div class="dialog">
+    <h3 id="confirmTitle">确认</h3>
+    <p id="confirmText"></p>
+    <div class="dialog-actions">
+      <button class="btn ghost" id="confirmCancel">取消</button>
+      <button class="btn danger" id="confirmOk">确认</button>
+    </div>
+  </div>
+</div>
+
+<script>/* 生活 App · 数据与计算层（可单独测试） */
+/* global localStorage, module */
+
+var LIFE_KEY = 'dsh_life_v1';
+var FIN_KEY = 'dsh_fin_records_v1';
+
+// ══════════ 基础工具 ══════════
+function pad2(n){ return (n < 10 ? '0' : '') + n; }
+function todayStr(d){
+  d = d || new Date();
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+function addDays(dateStr, n){
+  var d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return todayStr(d);
+}
+function daysBetween(a, b){
+  var t1 = new Date(a + 'T00:00:00').getTime();
+  var t2 = new Date(b + 'T00:00:00').getTime();
+  return Math.round((t2 - t1) / 86400000);
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+function round1(n){ n = Number(n) || 0; return Math.round((n + Number.EPSILON) * 10) / 10; }
+function round2(n){ n = Number(n) || 0; return Math.round((n + Number.EPSILON) * 100) / 100; }
+function fmtMoney(n){
+  n = Number(n) || 0;
+  var neg = n < 0;
+  n = Math.abs(n);
+  var s = n.toFixed(2).split('.');
+  var out = '¥' + s[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (s[1] === '00' ? '' : '.' + s[1]);
+  return (neg ? '-' : '') + out;
+}
+function monthOf(dateStr){ return String(dateStr).slice(0, 7); }
+function weekdayCn(dateStr){
+  return '日一二三四五六'[new Date(dateStr + 'T00:00:00').getDay()];
+}
+function dayLabel(dateStr){
+  var t = todayStr();
+  if (dateStr === t) return '今天';
+  if (dateStr === addDays(t, -1)) return '昨天';
+  return Number(dateStr.slice(5, 7)) + '月' + Number(dateStr.slice(8, 10)) + '日';
+}
+function lastNDates(n, endDate){
+  var end = endDate || todayStr(), out = [];
+  for (var i = n - 1; i >= 0; i--) out.push(addDays(end, -i));
+  return out;
+}
+
+// ══════════ 文档 ══════════
+function defaultDoc(){
+  return {
+    v: 1,
+    profile: { name: '我', start: todayStr() },
+    health: {},        // date -> { sleep, water, weight }
+    workouts: [],      // { id, date, type, minutes, note }
+    journal: [],       // { id, date, mood, text, photo }
+    habits: [],        // { id, name, created }
+    habitLogs: {},     // habitId -> { date: 1 }
+    todos: {},         // date -> [{ id, text, done }]
+    books: [],         // { id, title, total, read, status, note }
+    items: [],         // { id, name, kind, expire, note }
+    work: [],          // { id, title, stage, next, updated }
+  };
+}
+function normalizeDoc(raw){
+  var d = defaultDoc();
+  if (!raw || typeof raw !== 'object') return d;
+  ['health', 'habitLogs', 'todos'].forEach(function(k){
+    if (raw[k] && typeof raw[k] === 'object' && !Array.isArray(raw[k])) d[k] = raw[k];
+  });
+  ['workouts', 'journal', 'habits', 'books', 'items', 'work'].forEach(function(k){
+    if (Array.isArray(raw[k])) d[k] = raw[k];
+  });
+  if (raw.profile && typeof raw.profile === 'object'){
+    d.profile.name = String(raw.profile.name || '我').slice(0, 12);
+    d.profile.start = /^\d{4}-\d{2}-\d{2}$/.test(raw.profile.start) ? raw.profile.start : todayStr();
+  }
+  d.v = 1;
+  return d;
+}
+
+// ══════════ 财务（与「随手记」共用同一份数据）══════════
+function financeSummarize(records, month){
+  var income = 0, expense = 0;
+  (records || []).forEach(function(r){
+    if (month && monthOf(r.date) !== month) return;
+    if (r.type === '收入') income += Number(r.amount) || 0;
+    else expense += Number(r.amount) || 0;
+  });
+  return { income: round2(income), expense: round2(expense), balance: round2(income - expense) };
+}
+function financeByCat(records, month){
+  var map = {}, total = 0;
+  (records || []).forEach(function(r){
+    if (r.type !== '支出') return;
+    if (month && monthOf(r.date) !== month) return;
+    map[r.category] = round2((map[r.category] || 0) + (Number(r.amount) || 0));
+    total += Number(r.amount) || 0;
+  });
+  return Object.keys(map).map(function(c){
+    return { category: c, amount: map[c], pct: total ? map[c] / total : 0 };
+  }).sort(function(a, b){ return b.amount - a.amount; });
+}
+function financeToday(records){
+  var t = todayStr(), sum = 0;
+  (records || []).forEach(function(r){ if (r.date === t && r.type === '支出') sum += Number(r.amount) || 0; });
+  return round2(sum);
+}
+
+// ══════════ 健康（每天一条）══════════
+function getHealth(doc, date){
+  return (doc.health && doc.health[date]) || { sleep: null, water: null, weight: null };
+}
+function setHealth(doc, date, patch){
+  var cur = getHealth(doc, date);
+  var next = Object.assign({}, cur, patch || {});
+  ['sleep', 'water', 'weight'].forEach(function(k){
+    if (next[k] === '' || next[k] === null || next[k] === undefined || isNaN(Number(next[k]))) next[k] = null;
+    else next[k] = round1(next[k]);
+  });
+  doc.health[date] = next;
+  return next;
+}
+function healthRange(doc, days, endDate){
+  return lastNDates(days, endDate).map(function(d){
+    var h = getHealth(doc, d);
+    return { date: d, sleep: h.sleep, water: h.water, weight: h.weight };
+  });
+}
+function avgOf(list, key){
+  var vals = list.map(function(x){ return x[key]; }).filter(function(v){ return v !== null && v !== undefined && !isNaN(v); });
+  if (!vals.length) return null;
+  return round1(vals.reduce(function(a, b){ return a + b; }, 0) / vals.length);
+}
+
+// ══════════ 运动 ══════════
+var WORKOUT_TYPES = ['跑步', '力量', '球类', '骑行', '游泳', '散步', '拉伸', '其他'];
+function addWorkout(doc, type, minutes, note, date){
+  var m = Number(minutes);
+  if (!(m > 0)) return null;
+  var rec = { id: uid(), date: date || todayStr(), type: type || '其他',
+              minutes: Math.round(m), note: String(note || '').slice(0, 40) };
+  doc.workouts = doc.workouts.concat([rec]);
+  return rec;
+}
+function workoutsIn(doc, days, endDate){
+  var set = {};
+  lastNDates(days, endDate).forEach(function(d){ set[d] = 1; });
+  return doc.workouts.filter(function(w){ return set[w.date]; })
+    .sort(function(a, b){ return a.date < b.date ? 1 : -1; });
+}
+function weekWorkoutMinutes(doc, endDate){
+  return workoutsIn(doc, 7, endDate).reduce(function(a, w){ return a + w.minutes; }, 0);
+}
+
+// ══════════ 心情日记 ══════════
+var MOODS = [
+  { v: 1, emoji: '😞', label: '很差' },
+  { v: 2, emoji: '😕', label: '不好' },
+  { v: 3, emoji: '😐', label: '一般' },
+  { v: 4, emoji: '🙂', label: '不错' },
+  { v: 5, emoji: '😄', label: '很好' },
+];
+function addJournal(doc, mood, text, photo, date){
+  var rec = {
+    id: uid(), date: date || todayStr(),
+    mood: Math.min(5, Math.max(1, Number(mood) || 3)),
+    text: String(text || '').slice(0, 2000),
+    photo: photo || '',
+  };
+  doc.journal = doc.journal.concat([rec]);
+  return rec;
+}
+function journalIn(doc, days, endDate){
+  var set = {};
+  lastNDates(days, endDate).forEach(function(d){ set[d] = 1; });
+  return doc.journal.filter(function(j){ return set[j.date]; })
+    .sort(function(a, b){ return a.date < b.date ? 1 : -1; });
+}
+function moodAvg(doc, days, endDate){
+  var list = journalIn(doc, days, endDate).filter(function(j){ return j.mood; });
+  if (!list.length) return null;
+  return round1(list.reduce(function(a, j){ return a + j.mood; }, 0) / list.length);
+}
+
+// ══════════ 习惯 ══════════
+function addHabit(doc, name){
+  var n = String(name || '').trim();
+  if (!n) return null;
+  if (doc.habits.some(function(h){ return h.name === n; })) return null;
+  var h = { id: uid(), name: n.slice(0, 12), created: todayStr() };
+  doc.habits = doc.habits.concat([h]);
+  return h;
+}
+function removeHabit(doc, id){
+  doc.habits = doc.habits.filter(function(h){ return h.id !== id; });
+  delete doc.habitLogs[id];
+}
+function toggleHabit(doc, habitId, date){
+  date = date || todayStr();
+  if (!doc.habitLogs[habitId]) doc.habitLogs[habitId] = {};
+  if (doc.habitLogs[habitId][date]) delete doc.habitLogs[habitId][date];
+  else doc.habitLogs[habitId][date] = 1;
+  return !!doc.habitLogs[habitId][date];
+}
+function habitDone(doc, habitId, date){
+  date = date || todayStr();
+  return !!(doc.habitLogs[habitId] && doc.habitLogs[habitId][date]);
+}
+function habitStreak(doc, habitId, endDate){
+  var d = endDate || todayStr(), n = 0;
+  // 今天没打卡时从昨天开始算，避免「今天还没打」显示断签
+  if (!habitDone(doc, habitId, d)) d = addDays(d, -1);
+  while (habitDone(doc, habitId, d) && n < 3650){ n++; d = addDays(d, -1); }
+  return n;
+}
+function habitMonthRate(doc, habitId, month){
+  var days = 0, done = 0;
+  var base = new Date(month + '-01T00:00:00');
+  var last = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+  for (var i = 1; i <= last; i++){
+    var d = month + '-' + pad2(i);
+    if (d > todayStr()) break;
+    days++;
+    if (habitDone(doc, habitId, d)) done++;
+  }
+  return { days: days, done: done, rate: days ? round1(done / days * 100) : 0 };
+}
+function habitsDoneToday(doc, date){
+  date = date || todayStr();
+  var total = doc.habits.length;
+  var done = doc.habits.filter(function(h){ return habitDone(doc, h.id, date); }).length;
+  return { done: done, total: total };
+}
+
+// ══════════ 待办（今日三件事）══════════
+function getTodos(doc, date){
+  date = date || todayStr();
+  return (doc.todos[date] || []).map(function(t){ return Object.assign({}, t); });
+}
+function setTodos(doc, date, list){
+  date = date || todayStr();
+  doc.todos[date] = (list || []).slice(0, 3).map(function(t){
+    return { id: t.id || uid(), text: String(t.text || '').slice(0, 40), done: !!t.done };
+  });
+  return doc.todos[date];
+}
+function toggleTodo(doc, date, id){
+  date = date || todayStr();
+  (doc.todos[date] || []).forEach(function(t){ if (t.id === id) t.done = !t.done; });
+  return getTodos(doc, date);
+}
+function todosDoneToday(doc, date){
+  var list = getTodos(doc, date);
+  return { done: list.filter(function(t){ return t.done; }).length, total: list.length };
+}
+
+// ══════════ 读书 ══════════
+var BOOK_STATUS = ['在读', '想读', '读完', '暂停'];
+function addBook(doc, title, total, read, status){
+  var t = String(title || '').trim();
+  if (!t) return null;
+  var book = {
+    id: uid(), title: t.slice(0, 40),
+    total: Number(total) > 0 ? Math.round(Number(total)) : null,
+    read: Number(read) > 0 ? Math.round(Number(read)) : 0,
+    status: BOOK_STATUS.indexOf(status) >= 0 ? status : '在读',
+    note: '',
+  };
+  doc.books = doc.books.concat([book]);
+  return book;
+}
+function updateBook(doc, id, patch){
+  doc.books = doc.books.map(function(b){
+    if (b.id !== id) return b;
+    var next = Object.assign({}, b, patch || {});
+    ['total', 'read'].forEach(function(k){
+      if (next[k] !== null && next[k] !== undefined && next[k] !== ''){
+        var v = Math.round(Number(next[k]));
+        next[k] = isFinite(v) && v >= 0 ? v : null;
+      }
+    });
+    if (next.total && next.read > next.total) next.read = next.total;
+    if (next.status && BOOK_STATUS.indexOf(next.status) < 0) next.status = b.status;
+    return next;
+  });
+  return doc.books.filter(function(b){ return b.id === id; })[0];
+}
+function bookProgress(book){
+  if (!book.total) return null;
+  return Math.min(100, Math.round((book.read || 0) / book.total * 100));
+}
+function readingStats(doc){
+  var reading = doc.books.filter(function(b){ return b.status === '在读'; });
+  var done = doc.books.filter(function(b){ return b.status === '读完'; }).length;
+  return { reading: reading.length, done: done, total: doc.books.length };
+}
+
+// ══════════ 物品/证件（到期提醒）══════════
+var ITEM_KINDS = ['证件', '数码', '家电', '衣物', '其他'];
+function addItem(doc, name, kind, expire, note){
+  var n = String(name || '').trim();
+  if (!n) return null;
+  var item = {
+    id: uid(), name: n.slice(0, 30),
+    kind: ITEM_KINDS.indexOf(kind) >= 0 ? kind : '其他',
+    expire: /^\d{4}-\d{2}-\d{2}$/.test(expire || '') ? expire : '',
+    note: String(note || '').slice(0, 40),
+  };
+  doc.items = doc.items.concat([item]);
+  return item;
+}
+function removeItem(doc, id){ doc.items = doc.items.filter(function(i){ return i.id !== id; }); }
+function itemDaysLeft(item, today){
+  if (!item.expire) return null;
+  return daysBetween(today || todayStr(), item.expire);
+}
+function expiringItems(doc, withinDays, today){
+  var t = today || todayStr();
+  return doc.items.filter(function(i){
+    var d = itemDaysLeft(i, t);
+    return d !== null && d <= withinDays;
+  }).sort(function(a, b){ return itemDaysLeft(a, t) - itemDaysLeft(b, t); });
+}
+
+// ══════════ 工作进度 ══════════
+var WORK_STAGES = ['计划中', '进行中', '等回复', '已完成', '暂停'];
+function addWork(doc, title, stage, next, note){
+  var t = String(title || '').trim();
+  if (!t) return null;
+  var w = {
+    id: uid(), title: t.slice(0, 40),
+    stage: WORK_STAGES.indexOf(stage) >= 0 ? stage : '进行中',
+    next: String(next || '').slice(0, 60),
+    note: String(note || '').slice(0, 200),
+    updated: todayStr(),
+  };
+  doc.work = doc.work.concat([w]);
+  return w;
+}
+function updateWork(doc, id, patch){
+  doc.work = doc.work.map(function(w){
+    if (w.id !== id) return w;
+    var next = Object.assign({}, w, patch || {}, { updated: todayStr() });
+    if (WORK_STAGES.indexOf(next.stage) < 0) next.stage = w.stage;
+    return next;
+  });
+  return doc.work.filter(function(w){ return w.id === id; })[0];
+}
+function workByStage(doc){
+  var order = WORK_STAGES;
+  return doc.work.slice().sort(function(a, b){
+    return order.indexOf(a.stage) - order.indexOf(b.stage) || (a.updated < b.updated ? 1 : -1);
+  });
+}
+
+// ══════════ 回顾 ══════════
+/** 近 N 天每日汇总（用于趋势与日历） */
+function reviewRange(doc, finRecords, days, endDate){
+  return lastNDates(days, endDate).map(function(d){
+    var h = getHealth(doc, d);
+    var workouts = doc.workouts.filter(function(w){ return w.date === d; });
+    var journal = doc.journal.filter(function(j){ return j.date === d; });
+    var habitTotal = doc.habits.length;
+    var habitDone = doc.habits.filter(function(x){ return habitDoneCheck(doc, x.id, d); }).length;
+    return {
+      date: d,
+      expense: financeSummarize((finRecords || []).filter(function(r){ return r.date === d; }), null).expense,
+      sleep: h.sleep, water: h.water, weight: h.weight,
+      workoutMin: workouts.reduce(function(a, w){ return a + w.minutes; }, 0),
+      mood: journal.length ? journal[journal.length - 1].mood : null,
+      journal: journal.length > 0,
+      habitDone: habitDone, habitTotal: habitTotal,
+      todoDone: (doc.todos[d] || []).filter(function(t){ return t.done; }).length,
+      todoTotal: (doc.todos[d] || []).length,
+    };
+  });
+}
+function habitDoneCheck(doc, habitId, date){ return habitDone(doc, habitId, date); }
+
+/** 近 N 天连续记录天数 */
+function recordStreak(doc, finRecords, endDate){
+  var d = endDate || todayStr(), n = 0;
+  function hasAnything(date){
+    var h = getHealth(doc, date);
+    return (h.sleep !== null || h.water !== null || h.weight !== null) ||
+      doc.workouts.some(function(w){ return w.date === date; }) ||
+      doc.journal.some(function(j){ return j.date === date; }) ||
+      doc.habits.some(function(x){ return habitDone(doc, x.id, date); }) ||
+      (doc.todos[date] || []).some(function(t){ return t.done; }) ||
+      (finRecords || []).some(function(r){ return r.date === date; });
+  }
+  if (!hasAnything(d)) d = addDays(d, -1);
+  while (hasAnything(d) && n < 3650){ n++; d = addDays(d, -1); }
+  return n;
+}
+
+/** 月度统计 */
+function monthStats(doc, finRecords, month){
+  month = month || monthOf(todayStr());
+  var fin = financeSummarize(finRecords, month);
+  var days = 0, sleepSum = 0, sleepN = 0, workoutSum = 0;
+  for (var i = 1; i <= 31; i++){
+    var d = month + '-' + pad2(i);
+    if (d > todayStr()) break;
+    days++;
+    var h = getHealth(doc, d);
+    if (h.sleep !== null){ sleepSum += h.sleep; sleepN++; }
+    doc.workouts.forEach(function(w){ if (w.date === d) workoutSum += w.minutes; });
+  }
+  return {
+    month: month, days: days,
+    income: fin.income, expense: fin.expense, balance: fin.balance,
+    sleepAvg: sleepN ? round1(sleepSum / sleepN) : null,
+    workoutMinutes: workoutSum,
+    workouts: doc.workouts.filter(function(w){ return monthOf(w.date) === month; }).length,
+    journalDays: doc.journal.filter(function(j){ return monthOf(j.date) === month; }).length,
+    moodAvg: moodAvg(doc, days, month + '-01'),
+    habitRate: doc.habits.length ? round1(doc.habits.reduce(function(a, h){
+      return a + habitMonthRate(doc, h.id, month).rate;
+    }, 0) / doc.habits.length) : null,
+    reading: readingStats(doc),
+    workActive: doc.work.filter(function(w){ return w.stage === '进行中' || w.stage === '等回复'; }).length,
+  };
+}
+
+// ══════════ 备份 ══════════
+function buildBackup(doc, finRecords){
+  return JSON.stringify({
+    app: 'life',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    doc: doc,
+    finance: finRecords || [],
+  }, null, 2);
+}
+function parseBackup(text){
+  var data = JSON.parse(text);
+  if (!data || data.app !== 'life') throw new Error('不是本应用的备份文件');
+  return { doc: normalizeDoc(data.doc), finance: Array.isArray(data.finance) ? data.finance : [] };
+}
+
+if (typeof module !== 'undefined' && module.exports){
+  module.exports = {
+    LIFE_KEY, FIN_KEY, todayStr, addDays, daysBetween, monthOf, dayLabel, lastNDates,
+    fmtMoney, round1, round2, uid, weekdayCn,
+    defaultDoc, normalizeDoc,
+    financeSummarize, financeByCat, financeToday,
+    getHealth, setHealth, healthRange, avgOf,
+    WORKOUT_TYPES, addWorkout, workoutsIn, weekWorkoutMinutes,
+    MOODS, addJournal, journalIn, moodAvg,
+    addHabit, removeHabit, toggleHabit, habitDone, habitStreak, habitMonthRate, habitsDoneToday,
+    getTodos, setTodos, toggleTodo, todosDoneToday,
+    BOOK_STATUS, addBook, updateBook, bookProgress, readingStats,
+    ITEM_KINDS, addItem, removeItem, itemDaysLeft, expiringItems,
+    WORK_STAGES, addWork, updateWork, workByStage,
+    reviewRange, recordStreak, monthStats, buildBackup, parseBackup,
+  };
+}
+</script>
+<script>(function(){
+  'use strict';
+
+  // ══════════ 状态 ══════════
+  var state = { doc: null, fin: [], view: 'home', panel: null, confirmCb: null };
+  var FIN_CATS = {
+    '支出': ['餐饮', '交通', '购物', '住房', '娱乐', '通讯', '医疗', '学习', '其他支出'],
+    '收入': ['工资', '兼职', '奖学金', '红包', '其他收入'],
+  };
+  var FIN_ACC = '微信';
+  var MODULES = [
+    { key: 'finance', title: '财务记账', icon: '💰', color: '#EDF1FF',
+      sub: function(){ var m = financeSummarize(state.fin, todayMonth()); return '本月支出 ' + fmtMoney(m.expense); } },
+    { key: 'health', title: '健康', icon: '🌙', color: '#EAF3FF',
+      sub: function(){ var h = getHealth(state.doc, todayStr()); return h.sleep !== null ? '睡眠 ' + h.sleep + ' 小时' : '记录睡眠 / 喝水 / 体重'; } },
+    { key: 'workout', title: '运动健身', icon: '💪', color: '#EAF7F1',
+      sub: function(){ return '本周 ' + weekWorkoutMinutes(state.doc) + ' 分钟'; } },
+    { key: 'journal', title: '心情日记', icon: '📝', color: '#FFF3E8',
+      sub: function(){ var j = state.doc.journal.filter(function(x){ return x.date === todayStr(); }); return j.length ? '今天已写' : '写一句今天'; } },
+    { key: 'habits', title: '习惯打卡', icon: '✅', color: '#EAF7F1',
+      sub: function(){ var h = habitsDoneToday(state.doc); return h.total ? '今日 ' + h.done + '/' + h.total : '添加第一个习惯'; } },
+    { key: 'todos', title: '今日三件事', icon: '📌', color: '#F3EEFF',
+      sub: function(){ var t = todosDoneToday(state.doc); return t.total ? '完成 ' + t.done + '/' + t.total : '还没安排'; } },
+    { key: 'books', title: '读书学习', icon: '📖', color: '#FFF6E5',
+      sub: function(){ var r = readingStats(state.doc); return '在读 ' + r.reading + ' 本 · 读完 ' + r.done; } },
+    { key: 'items', title: '物品与证件', icon: '🗂', color: '#EAF3FF',
+      sub: function(){ var n = expiringItems(state.doc, 30).length; return n ? n + ' 件 30 天内到期' : '保修 / 证件到期提醒'; } },
+    { key: 'work', title: '工作进度', icon: '💼', color: '#F0F2F7',
+      sub: function(){ var n = state.doc.work.filter(function(w){ return w.stage === '进行中' || w.stage === '等回复'; }).length; return n ? n + ' 项进行中' : '投递 / 面试 / 项目'; } },
+  ];
+  function $(id){ return document.getElementById(id); }
+  function todayMonth(){ return monthOf(todayStr()); }
+  function esc(s){
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function toast(msg){
+    var t = document.createElement('div');
+    t.className = 'toast'; t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function(){ t.remove(); }, 1800);
+  }
+  function confirmDialog(title, text, cb){
+    $('confirmTitle').textContent = title;
+    $('confirmText').textContent = text;
+    state.confirmCb = cb;
+    $('confirmOverlay').hidden = false;
+  }
+  function download(name, text){
+    var blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 800);
+  }
+
+  // ══════════ 存储 ══════════
+  function loadDoc(){
+    try { return normalizeDoc(JSON.parse(localStorage.getItem(LIFE_KEY) || 'null')); }
+    catch (e){ return defaultDoc(); }
+  }
+  function saveDoc(){ try { localStorage.setItem(LIFE_KEY, JSON.stringify(state.doc)); } catch (e){ toast('存储空间不足，建议导出备份后清理照片'); } }
+  function loadFin(){
+    try { var r = JSON.parse(localStorage.getItem(FIN_KEY) || '[]'); return Array.isArray(r) ? r : []; }
+    catch (e){ return []; }
+  }
+  function saveFin(){ try { localStorage.setItem(FIN_KEY, JSON.stringify(state.fin)); } catch (e){} }
+
+  // ══════════ 视图切换 ══════════
+  function switchView(v){
+    state.view = v;
+    ['home', 'modules', 'review', 'me'].forEach(function(k){ $('v-' + k).hidden = (k !== v); });
+    document.querySelectorAll('.tabbar button').forEach(function(b){
+      b.classList.toggle('on', b.getAttribute('data-view') === v);
+    });
+    if (v === 'home') renderHome();
+    if (v === 'modules') renderModules();
+    if (v === 'review') renderReview();
+    if (v === 'me') renderMe();
+    window.scrollTo(0, 0);
+  }
+
+  // ══════════ 今日 ══════════
+  function renderHome(){
+    var t = todayStr();
+    var greetH = new Date().getHours();
+    var greet = greetH < 6 ? '凌晨好' : greetH < 11 ? '早上好' : greetH < 14 ? '中午好' : greetH < 18 ? '下午好' : '晚上好';
+    $('greet').textContent = greet + '，' + (state.doc.profile.name || '我');
+    var d = new Date(t + 'T00:00:00');
+    $('todaySub').textContent = (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日 · 周' +
+      '日一二三四五六'[d.getDay()] + ' · 记录 ' + (daysBetween(state.doc.profile.start, t) + 1) + ' 天';
+    var streak = recordStreak(state.doc, state.fin);
+    $('streakTag').textContent = '连续记录 ' + streak + ' 天';
+
+    // 待办
+    var todos = getTodos(state.doc, t);
+    var box = $('homeTodos');
+    if (!todos.length){
+      box.innerHTML = '<div class="empty"><span class="big">📌</span>今天还没安排，点右上角「编辑」写三件事。</div>';
+    } else {
+      box.innerHTML = todos.map(function(x){
+        return '<div class="todo-row"><button class="check' + (x.done ? ' on' : '') + '" data-todo="' + x.id + '">' +
+          (x.done ? '✓' : '') + '</button><span style="' + (x.done ? 'color:var(--sub);text-decoration:line-through' : '') +
+          '">' + esc(x.text) + '</span></div>';
+      }).join('');
+      box.querySelectorAll('[data-todo]').forEach(function(b){
+        b.onclick = function(){ toggleTodo(state.doc, t, b.getAttribute('data-todo')); saveDoc(); renderHome(); };
+      });
+    }
+
+    // 习惯
+    var hb = $('homeHabits');
+    if (!state.doc.habits.length){
+      hb.innerHTML = '<div class="empty" style="width:100%"><span class="big">✅</span>还没有习惯，点「管理」添加，比如早睡、运动、读书。</div>';
+    } else {
+      hb.innerHTML = state.doc.habits.map(function(h){
+        var done = habitDone(state.doc, h.id, t);
+        var s = habitStreak(state.doc, h.id);
+        return '<button class="habit' + (done ? ' on' : '') + '" data-habit="' + h.id + '">' +
+          (done ? '✓ ' : '○ ') + esc(h.name) + (s > 0 ? '<span class="s">' + s + '天</span>' : '') + '</button>';
+      }).join('');
+      hb.querySelectorAll('[data-habit]').forEach(function(b){
+        b.onclick = function(){ toggleHabit(state.doc, b.getAttribute('data-habit')); saveDoc(); renderHome(); };
+      });
+    }
+
+    // 心情
+    var moodBox = $('homeMood');
+    var todayJournal = state.doc.journal.filter(function(j){ return j.date === t; });
+    var curMood = todayJournal.length ? todayJournal[todayJournal.length - 1].mood : null;
+    moodBox.innerHTML = MOODS.map(function(m){
+      return '<button class="mood' + (curMood === m.v ? ' on' : '') + '" data-mood="' + m.v + '">' + m.emoji + '</button>';
+    }).join('');
+    moodBox.querySelectorAll('[data-mood]').forEach(function(b){
+      b.onclick = function(){ openPanel('journal', { mood: Number(b.getAttribute('data-mood')) }); };
+    });
+
+    // 概览
+    var h = getHealth(state.doc, t);
+    var workouts = state.doc.workouts.filter(function(w){ return w.date === t; });
+    var dash = [
+      { e: '💸', v: fmtMoney(financeToday(state.fin)).replace('¥', ''), k: '今日支出' },
+      { e: '💪', v: workouts.reduce(function(a, w){ return a + w.minutes; }, 0), k: '运动分钟' },
+      { e: '🌙', v: h.sleep === null ? '—' : h.sleep, k: '睡眠小时' },
+      { e: '', v: curMood ? MOODS.filter(function(m){ return m.v === curMood; })[0].emoji : '—', k: '心情' },
+    ];
+    $('homeDash').innerHTML = dash.map(function(x){
+      return '<div class="d">' + (x.e ? '<div class="e">' + x.e + '</div>' : '') +
+        '<div class="v"' + (x.e ? '' : ' style="font-size:20px;line-height:1.5"') + '>' + x.v + '</div>' +
+        '<div class="k">' + x.k + '</div></div>';
+    }).join('');
+
+    // 到期提醒
+    var items = expiringItems(state.doc, 30);
+    var ex = $('homeExpiring');
+    if (!items.length){
+      ex.innerHTML = '<div class="empty"><span class="big">⏰</span>30 天内没有到期的物品或证件。</div>';
+    } else {
+      ex.innerHTML = items.slice(0, 4).map(function(it){
+        var left = itemDaysLeft(it);
+        var tag = left < 0 ? '<span class="tag hot">已过期</span>' :
+          '<span class="tag warn">' + left + ' 天后</span>';
+        return '<div class="list-item"><span class="ic">🗂</span><span class="mid">' +
+          '<span class="t1">' + esc(it.name) + '</span><span class="t2">' + esc(it.kind) +
+          (it.expire ? ' · ' + it.expire : '') + '</span></span>' + tag + '</div>';
+      }).join('');
+    }
+
+    // 工作
+    var work = workByStage(state.doc).slice(0, 3);
+    var wb = $('homeWork');
+    wb.innerHTML = work.length ? work.map(function(w){
+      return '<div class="list-item"><span class="ic">💼</span><span class="mid">' +
+        '<span class="t1">' + esc(w.title) + '</span><span class="t2">' +
+        (w.next ? '下一步：' + esc(w.next) : '更新于 ' + w.updated) + '</span></span>' +
+        '<span class="tag">' + esc(w.stage) + '</span></div>';
+    }).join('') : '<div class="empty"><span class="big">💼</span>还没有工作或求职进度，点「全部」添加。</div>';
+
+    // 读书
+    var reading = state.doc.books.filter(function(b){ return b.status === '在读'; }).slice(0, 2);
+    var bb = $('homeBooks');
+    bb.innerHTML = reading.length ? reading.map(function(b){
+      var p = bookProgress(b);
+      return '<div class="list-item"><span class="ic">📖</span><span class="mid">' +
+        '<span class="t1">' + esc(b.title) + '</span>' +
+        '<div class="bar"><i style="width:' + (p === null ? 0 : p) + '%"></i></div></span>' +
+        '<span class="tag">' + (p === null ? b.read + ' 页' : p + '%') + '</span></div>';
+    }).join('') : '<div class="empty"><span class="big">📖</span>书架还空着，点「书架」添加一本在读的书。</div>';
+  }
+
+  // ══════════ 记录（模块入口）══════════
+  function renderModules(){
+    $('moduleGrid').innerHTML = MODULES.map(function(m){
+      return '<button class="module" data-panel="' + m.key + '">' +
+        '<span class="mi" style="background:' + m.color + '">' + m.icon + '</span>' +
+        '<span><span class="mt">' + m.title + '</span><span class="ms">' + esc(m.sub()) + '</span></span>' +
+        '</button>';
+    }).join('');
+    document.querySelectorAll('[data-panel]').forEach(function(b){
+      b.onclick = function(){ openPanel(b.getAttribute('data-panel')); };
+    });
+  }
+
+  // ══════════ 回顾 ══════════
+  function renderReview(){
+    var range = reviewRange(state.doc, state.fin, 7);
+    var today = range[range.length - 1];
+    var sleepAvg = avgOf(range, 'sleep');
+    var workoutTotal = range.reduce(function(a, r){ return a + r.workoutMin; }, 0);
+    var expenseTotal = range.reduce(function(a, r){ return a + r.expense; }, 0);
+    var moods = range.filter(function(r){ return r.mood; });
+    var moodAvgVal = moods.length ? round1(moods.reduce(function(a, r){ return a + r.mood; }, 0) / moods.length) : null;
+    var habitRate = (function(){
+      var done = range.reduce(function(a, r){ return a + r.habitDone; }, 0);
+      var total = range.reduce(function(a, r){ return a + r.habitTotal; }, 0);
+      return total ? Math.round(done / total * 100) : null;
+    })();
+    $('review7Tag').textContent = '到 ' + today.date;
+    var cells = [
+      { k: '平均睡眠', v: sleepAvg === null ? '—' : sleepAvg + 'h' },
+      { k: '运动', v: workoutTotal + '分' },
+      { k: '支出', v: fmtMoney(expenseTotal) },
+      { k: '心情', v: moodAvgVal === null ? '—' : moodAvgVal + '/5' },
+      { k: '习惯完成', v: habitRate === null ? '—' : habitRate + '%' },
+      { k: '记录天数', v: range.filter(function(r){ return r.habitDone || r.journal || r.sleep !== null || r.workoutMin || r.expense; }).length + '天' },
+    ];
+    $('review7Grid').innerHTML = cells.map(function(c){
+      return '<div class="stat"><div class="k">' + c.k + '</div><div class="v small">' + c.v + '</div></div>';
+    }).join('');
+
+    // 热力图：近 91 天
+    var days = lastNDates(91);
+    $('heatGrid').innerHTML = days.map(function(d){
+      var habits = state.doc.habits.filter(function(h){ return habitDone(state.doc, h.id, d); }).length;
+      var score = habits + (state.doc.journal.some(function(j){ return j.date === d; }) ? 1 : 0) +
+        (state.doc.workouts.some(function(w){ return w.date === d; }) ? 1 : 0) +
+        ((state.doc.todos[d] || []).some(function(t){ return t.done; }) ? 1 : 0);
+      var lv = score === 0 ? '' : score <= 1 ? ' l1' : score <= 2 ? ' l2' : score <= 3 ? ' l3' : ' l4';
+      return '<div class="cell' + lv + (d === todayStr() ? ' today' : '') + '" title="' + d + '"></div>';
+    }).join('');
+
+    // 本月统计
+    var ms = monthStats(state.doc, state.fin, todayMonth());
+    $('monthTag').textContent = ms.month;
+    var rows = [
+      ['收入', fmtMoney(ms.income)], ['支出', fmtMoney(ms.expense)], ['结余', fmtMoney(ms.balance)],
+      ['睡眠均值', ms.sleepAvg === null ? '—' : ms.sleepAvg + ' 小时'],
+      ['运动', ms.workoutMinutes + ' 分钟 · ' + ms.workouts + ' 次'],
+      ['日记', ms.journalDays + ' 天'],
+      ['心情均值', ms.moodAvg === null ? '—' : ms.moodAvg + '/5'],
+      ['习惯完成率', ms.habitRate === null ? '—' : ms.habitRate + '%'],
+    ];
+    $('monthStats').innerHTML = rows.map(function(r){
+      return '<div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid #F1F3F8">' +
+        '<span style="color:var(--sub);font-size:13px">' + r[0] + '</span>' +
+        '<b style="font-size:14px">' + r[1] + '</b></div>';
+    }).join('');
+
+    // 支出趋势
+    var trend = reviewRange(state.doc, state.fin, 14);
+    var maxV = Math.max.apply(null, trend.map(function(r){ return r.expense; }).concat([1]));
+    $('expenseTrend').innerHTML = '<div style="display:flex;align-items:flex-end;gap:5px;height:90px">' +
+      trend.map(function(r){
+        var hgt = Math.max(2, Math.round(r.expense / maxV * 80));
+        return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">' +
+          '<i style="display:block;width:100%;height:' + hgt + 'px;background:var(--primary);border-radius:3px 3px 0 0;opacity:' +
+          (r.expense ? .85 : .15) + '"></i>' +
+          '<span style="font-size:9px;color:var(--sub)">' + Number(r.date.slice(8)) + '</span></div>';
+      }).join('') + '</div>';
+  }
+
+  // ══════════ 我的 ══════════
+  function renderMe(){
+    $('meName').value = state.doc.profile.name;
+    $('meStart').value = state.doc.profile.start;
+  }
+
+  // ══════════ 面板框架 ══════════
+  var PANEL_TITLES = {
+    finance: '💰 财务记账', health: '🌙 健康记录', workout: '💪 运动健身', journal: '📝 心情日记',
+    habits: '✅ 习惯打卡', todos: '📌 今日三件事', books: '📖 读书学习',
+    items: '🗂 物品与证件', work: '💼 工作进度',
+  };
+  function openPanel(key, opts){
+    state.panel = key;
+    state.panelOpts = opts || {};
+    $('panelTitle').textContent = PANEL_TITLES[key] || key;
+    $('panel').hidden = false;
+    document.body.style.overflow = 'hidden';
+    renderPanel();
+  }
+  function closePanel(){
+    state.panel = null;
+    $('panel').hidden = true;
+    document.body.style.overflow = '';
+    renderHome(); renderModules(); renderReview();
+  }
+  function renderPanel(){
+    var key = state.panel;
+    if (!key) return;
+    var body = $('panelBody');
+    body.innerHTML = '';
+    var fn = PANELS[key];
+    if (fn) fn(body);
+  }
+
+  // ══════════ 各模块面板 ══════════
+  var PANELS = {};
+
+  PANELS.finance = function(body){
+    var month = todayMonth();
+    var sum = financeSummarize(state.fin, month);
+    var type = state.panelOpts.finType || '支出';
+    var cat = state.panelOpts.finCat || FIN_CATS[type][0];
+    body.innerHTML =
+      '<div class="card">' +
+      '<div class="grid3" style="margin-bottom:12px">' +
+      '<div class="stat"><div class="k">本月收入</div><div class="v small" style="color:var(--good)">' + fmtMoney(sum.income) + '</div></div>' +
+      '<div class="stat"><div class="k">本月支出</div><div class="v small" style="color:var(--bad)">' + fmtMoney(sum.expense) + '</div></div>' +
+      '<div class="stat"><div class="k">结余</div><div class="v small">' + fmtMoney(sum.balance) + '</div></div>' +
+      '</div>' +
+      '<div class="seg" id="pFinType"><button data-t="支出"' + (type === '支出' ? ' class="on"' : '') + '>支出</button>' +
+      '<button data-t="收入"' + (type === '收入' ? ' class="on"' : '') + '>收入</button></div>' +
+      '<label style="font-size:12.5px;color:var(--sub)">金额</label>' +
+      '<input class="input" id="pFinAmt" type="number" inputmode="decimal" placeholder="0.00" style="margin:6px 0 10px;font-size:20px;font-weight:700">' +
+      '<label style="font-size:12.5px;color:var(--sub)">类别</label>' +
+      '<div class="chip-row" id="pFinCats" style="margin:6px 0 10px">' + FIN_CATS[type].map(function(c){
+        return '<button class="chip' + (c === cat ? ' on' : '') + '" data-c="' + c + '">' + c + '</button>';
+      }).join('') + '</div>' +
+      '<label style="font-size:12.5px;color:var(--sub)">备注（选填）</label>' +
+      '<input class="input" id="pFinNote" maxlength="40" placeholder="例如 午饭" style="margin:6px 0 12px">' +
+      '<button class="btn primary" id="pFinSave">保存</button>' +
+      '</div>' +
+      '<div class="card"><div class="card-head"><h2>最近记录</h2><span class="tag">点 ✕ 删除</span></div>' +
+      '<div id="pFinList"></div></div>';
+
+    document.querySelectorAll('#pFinType button').forEach(function(b){
+      b.onclick = function(){
+        state.panelOpts.finType = b.getAttribute('data-t');
+        state.panelOpts.finCat = FIN_CATS[state.panelOpts.finType][0];
+        renderPanel();
+      };
+    });
+    document.querySelectorAll('#pFinCats .chip').forEach(function(b){
+      b.onclick = function(){ state.panelOpts.finCat = b.getAttribute('data-c'); renderPanel(); };
+    });
+    $('pFinSave').onclick = function(){
+      var amt = Number($('pFinAmt').value);
+      if (!(amt > 0)){ toast('请输入大于 0 的金额'); return; }
+      state.fin = state.fin.concat([{
+        id: uid(), date: todayStr(), type: type, category: state.panelOpts.finCat || cat,
+        amount: round2(amt), account: FIN_ACC, note: ($('pFinNote').value || '').trim().slice(0, 40),
+      }]);
+      saveFin();
+      $('pFinAmt').value = ''; $('pFinNote').value = '';
+      renderPanel(); toast('已记一笔');
+    };
+    var list = state.fin.slice().sort(function(a, b){ return a.date < b.date ? 1 : -1; }).slice(0, 20);
+    $('pFinList').innerHTML = list.length ? list.map(function(r){
+      return '<div class="list-item"><span class="ic">' + (r.type === '收入' ? '💰' : '💸') + '</span>' +
+        '<span class="mid"><span class="t1">' + esc(r.category) + '</span><span class="t2">' +
+        r.date + (r.note ? ' · ' + esc(r.note) : '') + '</span></span>' +
+        '<span class="amt ' + (r.type === '收入' ? 'inc' : 'exp') + '">' +
+        (r.type === '收入' ? '+' : '-') + fmtMoney(r.amount).replace('¥', '¥') + '</span>' +
+        '<button class="del" data-fin="' + r.id + '">✕</button></div>';
+    }).join('') : '<div class="empty">还没有记录。上面的表单填一笔试试。</div>';
+    $('pFinList').querySelectorAll('[data-fin]').forEach(function(b){
+      b.onclick = function(){
+        var id = b.getAttribute('data-fin');
+        confirmDialog('删除记录', '删除这笔记录？', function(){
+          state.fin = state.fin.filter(function(r){ return r.id !== id; });
+          saveFin(); renderPanel(); toast('已删除');
+        });
+      };
+    });
+  };
+
+  PANELS.health = function(body){
+    var t = todayStr();
+    var h = getHealth(state.doc, t);
+    body.innerHTML =
+      '<div class="card"><div class="card-head"><h2>今天的身体数据</h2></div>' +
+      '<div class="grid3">' +
+      '<div><label style="font-size:12px;color:var(--sub)">睡眠(小时)</label>' +
+      '<input class="input" id="pHSleep" type="number" step="0.5" placeholder="7" value="' + (h.sleep === null ? '' : h.sleep) + '"></div>' +
+      '<div><label style="font-size:12px;color:var(--sub)">喝水(杯)</label>' +
+      '<input class="input" id="pWater" type="number" placeholder="8" value="' + (h.water === null ? '' : h.water) + '"></div>' +
+      '<div><label style="font-size:12px;color:var(--sub)">体重(kg)</label>' +
+      '<input class="input" id="pWeight" type="number" step="0.1" placeholder="60" value="' + (h.weight === null ? '' : h.weight) + '"></div>' +
+      '</div><button class="btn primary" id="pHSave" style="margin-top:12px">保存</button></div>' +
+      '<div class="card"><div class="card-head"><h2>最近 14 天</h2></div><div id="pHealthList"></div></div>';
+    $('pHSave').onclick = function(){
+      setHealth(state.doc, t, {
+        sleep: $('pHSleep').value, water: $('pWater').value, weight: $('pWeight').value,
+      });
+      saveDoc(); renderPanel(); toast('已保存');
+    };
+    var rows = healthRange(state.doc, 14).slice().reverse();
+    $('pHealthList').innerHTML = rows.map(function(r){
+      var parts = [];
+      if (r.sleep !== null) parts.push('睡眠 ' + r.sleep + 'h');
+      if (r.water !== null) parts.push('喝水 ' + r.water + '杯');
+      if (r.weight !== null) parts.push('体重 ' + r.weight + 'kg');
+      return '<div class="list-item"><span class="ic">🌙</span><span class="mid">' +
+        '<span class="t1">' + dayLabel(r.date) + '</span><span class="t2">' + (parts.join(' · ') || '未记录') + '</span></span></div>';
+    }).join('');
+  };
+
+  PANELS.workout = function(body){
+    var type = state.panelOpts.wType || WORKOUT_TYPES[0];
+    var week = workoutsIn(state.doc, 7);
+    body.innerHTML =
+      '<div class="card"><div class="card-head"><h2>本周</h2><span class="tag good">' + weekWorkoutMinutes(state.doc) + ' 分钟</span></div>' +
+      '<label style="font-size:12.5px;color:var(--sub)">运动类型</label>' +
+      '<div class="chip-row" style="margin:6px 0 10px">' + WORKOUT_TYPES.map(function(w){
+        return '<button class="chip' + (w === type ? ' on' : '') + '" data-w="' + w + '">' + w + '</button>';
+      }).join('') + '</div>' +
+      '<div class="grid2"><div><label style="font-size:12px;color:var(--sub)">分钟</label>' +
+      '<input class="input" id="pWMin" type="number" placeholder="30"></div>' +
+      '<div><label style="font-size:12px;color:var(--sub)">备注</label>' +
+      '<input class="input" id="pWNote" maxlength="40" placeholder="选填"></div></div>' +
+      '<button class="btn primary" id="pWSave" style="margin-top:12px">记录这次运动</button></div>' +
+      '<div class="card"><div class="card-head"><h2>最近 7 天</h2></div><div id="pWList"></div></div>';
+    document.querySelectorAll('#panelBody [data-w]').forEach(function(b){
+      b.onclick = function(){ state.panelOpts.wType = b.getAttribute('data-w'); renderPanel(); };
+    });
+    $('pWSave').onclick = function(){
+      var rec = addWorkout(state.doc, state.panelOpts.wType || type, $('pWMin').value, $('pWNote').value);
+      if (!rec){ toast('请输入运动分钟数'); return; }
+      saveDoc(); renderPanel(); toast('已记录 ' + rec.minutes + ' 分钟');
+    };
+    $('pWList').innerHTML = week.length ? week.map(function(w){
+      return '<div class="list-item"><span class="ic">💪</span><span class="mid">' +
+        '<span class="t1">' + esc(w.type) + ' · ' + w.minutes + ' 分钟</span><span class="t2">' +
+        dayLabel(w.date) + (w.note ? ' · ' + esc(w.note) : '') + '</span></span></div>';
+    }).join('') : '<div class="empty">本周还没有运动记录。</div>';
+  };
+
+  PANELS.journal = function(body){
+    var t = todayStr();
+    var mood = state.panelOpts.mood || 3;
+    body.innerHTML =
+      '<div class="card"><div class="card-head"><h2>写一句今天</h2><span class="tag">' + t + '</span></div>' +
+      '<div class="mood-row" id="pMood">' + MOODS.map(function(m){
+        return '<button class="mood' + (m.v === mood ? ' on' : '') + '" data-m="' + m.v + '">' + m.emoji + '</button>';
+      }).join('') + '</div>' +
+      '<textarea class="input" id="pJText" placeholder="今天发生了什么？想记住什么？" style="margin-top:10px" maxlength="2000"></textarea>' +
+      '<div class="row" style="margin-top:10px">' +
+      '<input type="file" id="pJPhoto" accept="image/*" hidden>' +
+      '<button class="btn ghost small" id="pJPhotoBtn">添加照片</button>' +
+      '<span id="pJPhotoTip" class="hint" style="margin:0"></span></div>' +
+      '<img id="pJPreview" class="photo-thumb" style="margin-top:8px;display:none">' +
+      '<button class="btn primary" id="pJSave" style="margin-top:12px">保存日记</button></div>' +
+      '<div class="card"><div class="card-head"><h2>最近 30 条</h2></div><div id="pJList"></div></div>';
+    var photoData = '';
+    document.querySelectorAll('#pMood .mood').forEach(function(b){
+      b.onclick = function(){ mood = Number(b.getAttribute('data-m')); state.panelOpts.mood = mood;
+        document.querySelectorAll('#pMood .mood').forEach(function(x){ x.classList.toggle('on', x === b); }); };
+    });
+    $('pJPhotoBtn').onclick = function(){ $('pJPhoto').click(); };
+    $('pJPhoto').onchange = function(ev){
+      var f = ev.target.files && ev.target.files[0];
+      if (!f) return;
+      var rd = new FileReader();
+      rd.onload = function(){
+        var img = new Image();
+        img.onload = function(){
+          var maxW = 720, scale = Math.min(1, maxW / img.width);
+          var c = document.createElement('canvas');
+          c.width = Math.round(img.width * scale);
+          c.height = Math.round(img.height * scale);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          photoData = c.toDataURL('image/jpeg', 0.6);
+          $('pJPreview').src = photoData;
+          $('pJPreview').style.display = 'block';
+          $('pJPhotoTip').textContent = '已添加（约 ' + Math.round(photoData.length / 1024) + ' KB）';
+        };
+        img.src = rd.result;
+      };
+      rd.readAsDataURL(f);
+    };
+    $('pJSave').onclick = function(){
+      var text = ($('pJText').value || '').trim();
+      if (!text && !photoData){ toast('写一句话或加张照片'); return; }
+      addJournal(state.doc, mood, text, photoData);
+      saveDoc(); state.panelOpts.mood = mood; renderPanel(); toast('日记已保存');
+    };
+    var list = journalIn(state.doc, 30);
+    $('pJList').innerHTML = list.length ? list.map(function(j){
+      var m = MOODS.filter(function(x){ return x.v === j.mood; })[0] || MOODS[2];
+      return '<div class="list-item" style="align-items:flex-start">' +
+        '<span class="ic">' + m.emoji + '</span><span class="mid">' +
+        '<span class="t1">' + dayLabel(j.date) + ' · ' + m.label + '</span>' +
+        '<span class="t2" style="white-space:normal">' + esc(j.text || '（只有照片）') + '</span>' +
+        (j.photo ? '<img src="' + j.photo + '" class="photo-thumb" style="margin-top:6px">' : '') +
+        '</span><button class="del" data-j="' + j.id + '">✕</button></div>';
+    }).join('') : '<div class="empty">还没有日记。</div>';
+    $('pJList').querySelectorAll('[data-j]').forEach(function(b){
+      b.onclick = function(){
+        var id = b.getAttribute('data-j');
+        confirmDialog('删除日记', '删除这条日记？', function(){
+          state.doc.journal = state.doc.journal.filter(function(j){ return j.id !== id; });
+          saveDoc(); renderPanel(); toast('已删除');
+        });
+      };
+    });
+  };
+
+  PANELS.habits = function(body){
+    var t = todayStr();
+    body.innerHTML =
+      '<div class="card"><div class="row"><input class="input" id="pHName" maxlength="12" placeholder="新习惯，如 早睡 / 运动 / 读书">' +
+      '<button class="btn primary small" id="pHAdd" style="flex:none">添加</button></div>' +
+      '<p class="hint">每天点一下打卡，连续天数会累计。</p></div>' +
+      '<div class="card"><div class="card-head"><h2>我的习惯</h2><span class="tag">' + state.doc.habits.length + ' 个</span></div>' +
+      '<div id="pHList"></div></div>';
+    $('pHAdd').onclick = function(){
+      var h = addHabit(state.doc, $('pHName').value);
+      if (!h){ toast('请输入习惯名，且不要重复'); return; }
+      saveDoc(); renderPanel(); toast('已添加');
+    };
+    $('pHList').innerHTML = state.doc.habits.length ? state.doc.habits.map(function(h){
+      var done = habitDone(state.doc, h.id, t);
+      var streak = habitStreak(state.doc, h.id);
+      var rate = habitMonthRate(state.doc, h.id, todayMonth());
+      return '<div class="list-item"><span class="ic">' +
+        '<button class="check' + (done ? ' on' : '') + '" data-h="' + h.id + '">' + (done ? '✓' : '') + '</button></span>' +
+        '<span class="mid"><span class="t1">' + esc(h.name) + '</span>' +
+        '<span class="t2">连续 ' + streak + ' 天 · 本月完成 ' + rate.rate + '%</span>' +
+        '<div class="bar"><i class="good" style="width:' + rate.rate + '%"></i></div></span>' +
+        '<button class="del" data-hd="' + h.id + '">✕</button></div>';
+    }).join('') : '<div class="empty">还没有习惯。</div>';
+    $('pHList').querySelectorAll('[data-h]').forEach(function(b){
+      b.onclick = function(){ toggleHabit(state.doc, b.getAttribute('data-h')); saveDoc(); renderPanel(); };
+    });
+    $('pHList').querySelectorAll('[data-hd]').forEach(function(b){
+      b.onclick = function(){
+        var id = b.getAttribute('data-hd');
+        confirmDialog('删除习惯', '删除后打卡记录也会一起删除。', function(){
+          removeHabit(state.doc, id); saveDoc(); renderPanel(); toast('已删除');
+        });
+      };
+    });
+  };
+
+  PANELS.todos = function(body){
+    var t = todayStr();
+    var list = getTodos(state.doc, t);
+    while (list.length < 3) list.push({ id: '', text: '', done: false });
+    body.innerHTML =
+      '<div class="card"><div class="card-head"><h2>今天的三个重点</h2><span class="tag">' + t + '</span></div>' +
+      list.slice(0, 3).map(function(x, i){
+        return '<div class="row" style="margin-bottom:8px">' +
+          '<span style="width:20px;color:var(--sub)">' + (i + 1) + '.</span>' +
+          '<input class="input" data-todo-input="' + i + '" maxlength="40" placeholder="第 ' + (i + 1) + ' 件事" value="' + esc(x.text) + '"></div>';
+      }).join('') +
+      '<button class="btn primary" id="pTdSave">保存</button></div>' +
+      '<div class="card"><div class="card-head"><h2>近 7 天完成情况</h2></div><div id="pTdHist"></div></div>';
+    $('pTdSave').onclick = function(){
+      var arr = [];
+      document.querySelectorAll('[data-todo-input]').forEach(function(inp){
+        var text = inp.value.trim();
+        if (text) arr.push({ text: text });
+      });
+      setTodos(state.doc, t, arr);
+      saveDoc(); renderPanel(); toast('已保存');
+    };
+    $('pTdHist').innerHTML = lastNDates(7).reverse().map(function(d){
+      var st = todosDoneToday(state.doc, d);
+      var pct = st.total ? Math.round(st.done / st.total * 100) : 0;
+      return '<div class="list-item"><span class="ic">📌</span><span class="mid">' +
+        '<span class="t1">' + dayLabel(d) + '</span>' +
+        '<span class="t2">' + (st.total ? st.done + ' / ' + st.total : '未安排') + '</span>' +
+        '<div class="bar"><i class="good" style="width:' + pct + '%"></i></div></span></div>';
+    }).join('');
+  };
+
+  PANELS.books = function(body){
+    body.innerHTML =
+      '<div class="card"><div class="card-head"><h2>添加一本书</h2></div>' +
+      '<input class="input" id="pBTitle" maxlength="40" placeholder="书名" style="margin-bottom:8px">' +
+      '<div class="grid3"><input class="input" id="pBTotal" type="number" placeholder="总页数">' +
+      '<input class="input" id="pBRead" type="number" placeholder="已读页数">' +
+      '<select class="input" id="pBStatus">' + BOOK_STATUS.map(function(s){ return '<option>' + s + '</option>'; }).join('') + '</select></div>' +
+      '<button class="btn primary" id="pBAdd" style="margin-top:10px">加入书架</button></div>' +
+      '<div class="card"><div class="card-head"><h2>书架</h2><span class="tag">' + state.doc.books.length + ' 本</span></div>' +
+      '<div id="pBList"></div></div>';
+    $('pBAdd').onclick = function(){
+      var b = addBook(state.doc, $('pBTitle').value, $('pBTotal').value, $('pBRead').value, $('pBStatus').value);
+      if (!b){ toast('请填写书名'); return; }
+      saveDoc(); renderPanel(); toast('已加入书架');
+    };
+    $('pBList').innerHTML = state.doc.books.length ? state.doc.books.map(function(b){
+      var p = bookProgress(b);
+      return '<div class="list-item" style="align-items:flex-start"><span class="ic">📖</span><span class="mid">' +
+        '<span class="t1">' + esc(b.title) + '</span>' +
+        '<span class="t2">' + b.status + (b.total ? ' · ' + b.read + '/' + b.total + ' 页' : '') +
+        (p === null ? '' : ' · ' + p + '%') + '</span>' +
+        (p === null ? '' : '<div class="bar"><i style="width:' + p + '%"></i></div>') +
+        '<div class="row" style="margin-top:8px;gap:6px">' +
+        '<input class="input" data-book-read="' + b.id + '" type="number" value="' + b.read + '" style="width:80px;padding:6px 8px;font-size:13px">' +
+        '<button class="btn ghost small" data-book-save="' + b.id + '">更新</button>' +
+        '<select class="input" data-book-status="' + b.id + '" style="width:auto;padding:6px 8px;font-size:13px">' +
+        BOOK_STATUS.map(function(s){ return '<option' + (s === b.status ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+        '</select>' +
+        '<button class="del" data-book-del="' + b.id + '">✕</button></div></span></div>';
+    }).join('') : '<div class="empty">书架空着，先加一本。</div>';
+    $('pBList').querySelectorAll('[data-book-save]').forEach(function(btn){
+      btn.onclick = function(){
+        var id = btn.getAttribute('data-book-save');
+        var read = document.querySelector('[data-book-read="' + id + '"]').value;
+        updateBook(state.doc, id, { read: read });
+        saveDoc(); renderPanel(); toast('进度已更新');
+      };
+    });
+    $('pBList').querySelectorAll('[data-book-status]').forEach(function(sel){
+      sel.onchange = function(){
+        updateBook(state.doc, sel.getAttribute('data-book-status'), { status: sel.value });
+        saveDoc(); renderPanel(); toast('状态已更新');
+      };
+    });
+    $('pBList').querySelectorAll('[data-book-del]').forEach(function(b){
+      b.onclick = function(){
+        var id = b.getAttribute('data-book-del');
+        confirmDialog('移出书架', '删除这本书的记录？', function(){
+          state.doc.books = state.doc.books.filter(function(x){ return x.id !== id; });
+          saveDoc(); renderPanel(); toast('已删除');
+        });
+      };
+    });
+  };
+
+  PANELS.items = function(body){
+    var list = state.doc.items.slice().sort(function(a, b){
+      if (!a.expire) return 1;
+      if (!b.expire) return -1;
+      return a.expire < b.expire ? -1 : 1;
+    });
+    body.innerHTML =
+      '<div class="card"><div class="card-head"><h2>添加物品 / 证件</h2></div>' +
+      '<input class="input" id="pIName" maxlength="30" placeholder="名称，如 身份证 / 电动牙刷" style="margin-bottom:8px">' +
+      '<div class="grid2"><select class="input" id="pIKind">' + ITEM_KINDS.map(function(k){ return '<option>' + k + '</option>'; }).join('') + '</select>' +
+      '<input class="input" id="pIExpire" type="date"></div>' +
+      '<p class="hint">到期日可以是证件有效期、保修截止日。</p>' +
+      '<button class="btn primary" id="pIAdd" style="margin-top:10px">添加</button></div>' +
+      '<div class="card"><div class="card-head"><h2>我的物品</h2><span class="tag">' + state.doc.items.length + ' 件</span></div>' +
+      '<div id="pIList"></div></div>';
+    $('pIAdd').onclick = function(){
+      var it = addItem(state.doc, $('pIName').value, $('pIKind').value, $('pIExpire').value);
+      if (!it){ toast('请填写名称'); return; }
+      saveDoc(); renderPanel(); toast('已添加');
+    };
+    $('pIList').innerHTML = list.length ? list.map(function(it){
+      var left = itemDaysLeft(it);
+      var tag = left === null ? '<span class="tag">无期限</span>' :
+        left < 0 ? '<span class="tag hot">已过期 ' + Math.abs(left) + ' 天</span>' :
+        left <= 30 ? '<span class="tag warn">' + left + ' 天后到期</span>' :
+        '<span class="tag">' + left + ' 天</span>';
+      return '<div class="list-item"><span class="ic">🗂</span><span class="mid">' +
+        '<span class="t1">' + esc(it.name) + '</span><span class="t2">' + esc(it.kind) +
+        (it.expire ? ' · 到期 ' + it.expire : '') + '</span></span>' + tag +
+        '<button class="del" data-item="' + it.id + '">✕</button></div>';
+    }).join('') : '<div class="empty">还没有物品记录。</div>';
+    $('pIList').querySelectorAll('[data-item]').forEach(function(b){
+      b.onclick = function(){
+        var id = b.getAttribute('data-item');
+        confirmDialog('删除物品', '删除这条记录？', function(){
+          removeItem(state.doc, id); saveDoc(); renderPanel(); toast('已删除');
+        });
+      };
+    });
+  };
+
+  PANELS.work = function(body){
+    body.innerHTML =
+      '<div class="card"><div class="card-head"><h2>添加工作 / 求职进度</h2></div>' +
+      '<input class="input" id="pWkTitle" maxlength="40" placeholder="如 投递 AI 销售岗 / 面试准备" style="margin-bottom:8px">' +
+      '<div class="grid2"><select class="input" id="pWkStage">' +
+      WORK_STAGES.map(function(s, i){ return '<option' + (i === 1 ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+      '</select><input class="input" id="pWkNext" maxlength="60" placeholder="下一步做什么"></div>' +
+      '<button class="btn primary" id="pWkAdd" style="margin-top:10px">添加</button></div>' +
+      '<div class="card"><div class="card-head"><h2>进行中的事</h2><span class="tag">' + state.doc.work.length + ' 项</span></div>' +
+      '<div id="pWkList"></div></div>';
+    $('pWkAdd').onclick = function(){
+      var w = addWork(state.doc, $('pWkTitle').value, $('pWkStage').value, $('pWkNext').value);
+      if (!w){ toast('请填写名称'); return; }
+      saveDoc(); renderPanel(); toast('已添加');
+    };
+    var list = workByStage(state.doc);
+    $('pWkList').innerHTML = list.length ? list.map(function(w){
+      return '<div class="list-item" style="align-items:flex-start"><span class="ic">💼</span><span class="mid">' +
+        '<span class="t1">' + esc(w.title) + '</span>' +
+        '<span class="t2">' + (w.next ? '下一步：' + esc(w.next) : '更新于 ' + w.updated) + '</span>' +
+        '<div class="row" style="margin-top:8px;gap:6px">' +
+        '<select class="input" data-wk-stage="' + w.id + '" style="width:auto;padding:6px 8px;font-size:13px">' +
+        WORK_STAGES.map(function(s){ return '<option' + (s === w.stage ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+        '</select><button class="del" data-wk-del="' + w.id + '">✕</button></div></span></div>';
+    }).join('') : '<div class="empty">还没有工作进度。</div>';
+    $('pWkList').querySelectorAll('[data-wk-stage]').forEach(function(sel){
+      sel.onchange = function(){
+        updateWork(state.doc, sel.getAttribute('data-wk-stage'), { stage: sel.value });
+        saveDoc(); renderPanel(); toast('阶段已更新');
+      };
+    });
+    $('pWkList').querySelectorAll('[data-wk-del]').forEach(function(b){
+      b.onclick = function(){
+        var id = b.getAttribute('data-wk-del');
+        confirmDialog('删除进度', '删除这一项？', function(){
+          state.doc.work = state.doc.work.filter(function(w){ return w.id !== id; });
+          saveDoc(); renderPanel(); toast('已删除');
+        });
+      };
+    });
+  };
+
+  // ══════════ 事件 ══════════
+  document.querySelectorAll('.tabbar button').forEach(function(b){
+    b.onclick = function(){ switchView(b.getAttribute('data-view')); };
+  });
+  document.querySelectorAll('[data-panel]').forEach(function(b){
+    b.onclick = function(){ openPanel(b.getAttribute('data-panel')); };
+  });
+  $('panelClose').onclick = closePanel;
+  $('fab').onclick = function(){
+    $('moduleGrid').scrollIntoView({ behavior: 'smooth' });
+    switchView('modules');
+  };
+  $('confirmCancel').onclick = function(){ $('confirmOverlay').hidden = true; state.confirmCb = null; };
+  $('confirmOk').onclick = function(){
+    var cb = state.confirmCb;
+    $('confirmOverlay').hidden = true; state.confirmCb = null;
+    if (cb) cb();
+  };
+  $('meSave').onclick = function(){
+    state.doc.profile.name = ($('meName').value || '我').trim().slice(0, 12) || '我';
+    if (/^\d{4}-\d{2}-\d{2}$/.test($('meStart').value)) state.doc.profile.start = $('meStart').value;
+    saveDoc(); renderMe(); toast('已保存');
+  };
+  $('exportBackup').onclick = function(){
+    download('生活备份_' + todayStr().replace(/-/g, '') + '.json', buildBackup(state.doc, state.fin));
+    toast('备份已导出');
+  };
+  $('importBackup').onclick = function(){ $('importFile').click(); };
+  $('importFile').onchange = function(ev){
+    var f = ev.target.files && ev.target.files[0];
+    if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function(){
+      try {
+        var data = parseBackup(rd.result);
+        confirmDialog('恢复备份', '将用备份覆盖当前数据（' + data.finance.length + ' 笔账单 + 全部记录）。确定？', function(){
+          state.doc = data.doc;
+          state.fin = data.finance;
+          saveDoc(); saveFin();
+          renderHome(); renderModules(); renderReview(); renderMe();
+          toast('已恢复');
+        });
+      } catch (e){ toast('文件格式不对：' + e.message); }
+      ev.target.value = '';
+    };
+    rd.readAsText(f, 'UTF-8');
+  };
+  $('syncFinance').onclick = function(){
+    state.fin = loadFin();
+    renderHome(); renderModules();
+    toast('已读取「随手记」的 ' + state.fin.length + ' 笔记录');
+  };
+  $('clearAll').onclick = function(){
+    confirmDialog('清空全部数据', '将删除生活记录（习惯、日记、健康、运动、待办、读书、物品、工作）。账单数据在「随手记」里单独管理，不受影响。确定？', function(){
+      state.doc = defaultDoc();
+      saveDoc();
+      renderHome(); renderModules(); renderReview(); renderMe();
+      toast('已清空');
+    });
+  };
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape'){
+      if (!$('confirmOverlay').hidden){ $('confirmCancel').click(); }
+      else if (state.panel) closePanel();
+    }
+  });
+
+  // ══════════ 启动 ══════════
+  state.doc = loadDoc();
+  state.fin = loadFin();
+  renderHome(); renderModules(); renderModules(); renderReview(); renderMe();
+  switchView('home');
+  window.__life = { state: state, renderHome: renderHome, renderModules: renderModules, renderReview: renderReview, openPanel: openPanel };
+
+  // 注册 Service Worker（PWA 离线）
+  if ('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){});
+    });
+  }
+})();
+</script>
+</body>
+</html>
