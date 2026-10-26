@@ -153,6 +153,27 @@
   .paste-tip.err{background:#FFF1F0;color:#A8071A}
   .paste-card .row{display:flex;gap:8px;flex-wrap:nowrap}
   .paste-card .row .btn-mini{flex:1;white-space:nowrap;padding:9px 6px}
+  /* 财务 */
+  .view--fin{--accent:#1B4B6B;--accent2:#2A6F97;--accent-soft:#E3EEF5}
+  .bar{height:8px;background:#EDF1F5;border-radius:5px;overflow:hidden;margin-top:5px}
+  .bar>i{display:block;height:100%;background:var(--accent);border-radius:5px;transition:width .3s}
+  .bar>i.warn{background:#E0A93B}
+  .bar>i.over{background:#C0392B}
+  .fin-row{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:#4A5462;margin-top:10px}
+  .fin-row b{color:#1B2430}
+  .fin-row .b-in{width:76px;border:1px solid #E3E8F0;border-radius:8px;padding:4px 7px;font-size:12.5px;
+    font-family:inherit;text-align:right;background:#FCFBF8}
+  .chart{display:flex;align-items:flex-end;gap:7px;height:118px;margin-top:10px}
+  .chart .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px}
+  .chart .bars{display:flex;gap:2px;align-items:flex-end;width:100%;height:96px}
+  .chart .bars i{flex:1;border-radius:2px 2px 0 0;min-height:2px}
+  .chart .bars i.inc{background:#2A6F97}
+  .chart .bars i.exp{background:#E08A4B}
+  .chart .lb{font-size:9.5px;color:#8A929C}
+  .score{font-size:36px;font-weight:800;color:var(--accent);line-height:1}
+  .badge{font-size:11px;padding:2px 7px;border-radius:6px;background:#EDF1F5;color:#5A6270}
+  .badge.ok{background:#E7F5EC;color:#1E7B45}
+  .badge.bad{background:#FDECEA;color:#C0392B}
 </style>
 </head>
 <body>
@@ -386,11 +407,72 @@
   </div>
 </div>
 
+<!-- ══════════ 财务 ══════════ -->
+<div class="view view--fin" id="v-fin">
+  <div class="wrap">
+    <div class="hero">
+      <h1>财务</h1>
+      <div class="stats four">
+        <div class="stat"><div class="k">本月收入</div><div class="v" id="fInc">¥0</div></div>
+        <div class="stat"><div class="k">本月支出</div><div class="v" id="fExp">¥0</div></div>
+        <div class="stat"><div class="k">储蓄率</div><div class="v" id="fRate">—</div></div>
+        <div class="stat"><div class="k">净资产</div><div class="v" id="fNet">¥0</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📊 分类预算 <span class="tag" id="fBudgetTag">本月</span></h2>
+      <div id="fBudgetList"></div>
+    </div>
+
+    <div class="card">
+      <h2>🏦 资产与负债 <span class="tag" id="fNetTag"></span></h2>
+      <div id="fAssetList"></div>
+      <div class="row" style="margin-top:10px">
+        <div><label>名称</label><input id="faName" placeholder="银行卡 / 花呗"></div>
+        <div><label>金额</label><input id="faAmt" type="number" inputmode="decimal" placeholder="0"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label>类型</label><select id="faKind"><option>资产</option><option>负债</option></select></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn-mini primary" id="faAdd">添加</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🎯 攒钱目标 <span class="tag" id="fGoalTag">0 个</span></h2>
+      <div id="fGoalList"></div>
+      <div class="row" style="margin-top:10px">
+        <div><label>目标名</label><input id="fgName" placeholder="应急金"></div>
+        <div><label>目标金额</label><input id="fgTarget" type="number" inputmode="decimal" placeholder="10000"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label>已存</label><input id="fgSaved" type="number" inputmode="decimal" placeholder="0"></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn-mini primary" id="fgAdd">添加</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🩺 财务体检 <span class="tag" id="fScoreTag"></span></h2>
+      <div style="display:flex;align-items:center;gap:16px">
+        <div class="score" id="fScore">—</div>
+        <div style="flex:1;font-size:12.5px;color:#5A6270;line-height:1.7" id="fScoreHint"></div>
+      </div>
+      <div id="fCheckList" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>📈 近 6 个月 <span class="tag">蓝=收入 · 橙=支出</span></h2>
+      <div class="chart" id="fChart"></div>
+    </div>
+  </div>
+</div>
+
 <nav class="tabbar">
   <button class="on" data-view="home"><span class="ic">🏠</span>概览</button>
   <button data-view="money"><span class="ic">💰</span>记账</button>
   <button data-view="health"><span class="ic">🌙</span>健康</button>
   <button data-view="gym"><span class="ic">💪</span>健身</button>
+  <button data-view="fin"><span class="ic">💹</span>财务</button>
 </nav>
 
 <input type="file" id="mFile" accept=".csv,text/csv" style="display:none">
@@ -1017,7 +1099,7 @@ function zipStore(files){
   }
 
   // ══════════ 视图切换 ══════════
-  var VIEWS = {home:'v-home', money:'v-money', health:'v-health', gym:'v-gym'};
+  var VIEWS = {home:'v-home', money:'v-money', health:'v-health', gym:'v-gym', fin:'v-fin'};
   var current = 'home';
   function show(name){
     current = name;
@@ -1026,6 +1108,7 @@ function zipStore(files){
     window.scrollTo(0, 0);
     if (name === 'home') renderHome();
     if (name === 'gym') renderGymStats();
+    if (name === 'fin') renderFin();
   }
   document.querySelectorAll('.tabbar button').forEach(function(b){
     b.onclick = function(){ show(b.dataset.view); };
@@ -1687,6 +1770,221 @@ function zipStore(files){
       box.appendChild(d);
     });
   }
+
+  // ══════════ 财务（预算 / 资产 / 目标 / 体检）══════════
+  var BUDGET_KEY = 'dsh_budget_v1', ASSET_KEY = 'dsh_assets_v1', GOAL_KEY = 'dsh_goals_v1';
+  var fstate = { budgets: {}, assets: [], goals: [] };
+
+  function fMonth(){ return todayStr().slice(0, 7); }
+  function fLoadAll(){
+    try { fstate.budgets = JSON.parse(localStorage.getItem(BUDGET_KEY) || '{}') || {}; } catch(e){ fstate.budgets = {}; }
+    try { fstate.assets = JSON.parse(localStorage.getItem(ASSET_KEY) || '[]') || []; } catch(e){ fstate.assets = []; }
+    try { fstate.goals = JSON.parse(localStorage.getItem(GOAL_KEY) || '[]') || []; } catch(e){ fstate.goals = []; }
+    if (!Object.keys(fstate.budgets).length){
+      fstate.budgets = { '餐饮': 800, '交通': 200, '住宿': 1200, '学习': 200, '娱乐': 300,
+                         '通讯': 100, '医疗': 100, '购物': 300, '其他支出': 200 };
+    }
+  }
+  function fSave(){
+    try {
+      localStorage.setItem(BUDGET_KEY, JSON.stringify(fstate.budgets));
+      localStorage.setItem(ASSET_KEY, JSON.stringify(fstate.assets));
+      localStorage.setItem(GOAL_KEY, JSON.stringify(fstate.goals));
+    } catch(e){}
+  }
+  function fSpendByCat(month){
+    var out = {};
+    mstate.records.forEach(function(e){
+      if (e.type === '支出' && String(e.date).slice(0, 7) === month){
+        out[e.category] = round2((out[e.category] || 0) + e.amount);
+      }
+    });
+    return out;
+  }
+  function fNetWorth(){
+    var a = 0, d = 0;
+    fstate.assets.forEach(function(x){
+      if (x.kind === '负债') d += Number(x.amount) || 0; else a += Number(x.amount) || 0;
+    });
+    return { asset: round2(a), debt: round2(d), net: round2(a - d) };
+  }
+  function fAvgExpense(months){
+    var list = [], base = new Date();
+    for (var i = 0; i < months; i++){
+      var d = new Date(base.getFullYear(), base.getMonth() - i, 1);
+      var mm = d.getFullYear() + '-' + pad2(d.getMonth() + 1);
+      list.push(moneySummarize(mstate.records, mm).expense);
+    }
+    var sum = list.reduce(function(a, b){ return a + b; }, 0);
+    return round2(sum / months);
+  }
+  function fHealth(){
+    var m = fMonth(), s = moneySummarize(mstate.records, m), nw = fNetWorth();
+    var rate = s.income > 0 ? (s.income - s.expense) / s.income : 0;
+    var avgExp = fAvgExpense(3);
+    var emerg = avgExp > 0 ? nw.asset / avgExp : 0;
+    var debtRatio = nw.asset > 0 ? nw.debt / nw.asset : (nw.debt > 0 ? 1 : 0);
+    var spend = fSpendByCat(m), over = [];
+    Object.keys(fstate.budgets).forEach(function(c){
+      var b = Number(fstate.budgets[c]) || 0;
+      if (b > 0 && (spend[c] || 0) > b) over.push(c);
+    });
+    var score = 100, items = [];
+    if (!s.income){ score -= 20; items.push('本月没有收入记录，先记账'); }
+    if (rate < 0.2){ score -= 15; items.push('储蓄率 ' + Math.round(rate * 100) + '%，低于 20% 目标'); }
+    if (rate < 0.1 && s.income > 0){ score -= 15; items.push('储蓄率低于 10%，现金流偏紧'); }
+    if (emerg < 3){ score -= 12; items.push('应急金约 ' + Math.round(emerg * 10) / 10 + ' 个月，建议存到 3–6 个月'); }
+    if (emerg < 1 && nw.asset >= 0){ score -= 15; items.push('应急金不足 1 个月，风险偏高'); }
+    if (debtRatio > 0.5){ score -= 10; items.push('负债率 ' + Math.round(debtRatio * 100) + '%，超过 50%'); }
+    if (over.length){ score -= (over.length >= 3 ? 10 : 5); items.push(over.length + ' 个分类超预算：' + over.join('、')); }
+    score = Math.max(0, Math.min(100, score));
+    var level = score >= 85 ? '健康' : score >= 70 ? '良好' : score >= 50 ? '需要改进' : '危险';
+    return { rate: rate, emerg: emerg, debtRatio: debtRatio, over: over, score: score,
+             level: level, items: items, spend: spend, sum: s, net: nw };
+  }
+
+  function fRenderBudgets(){
+    var box = $('fBudgetList'), spend = fSpendByCat(fMonth());
+    box.innerHTML = '';
+    MONEY_CATS['支出'].forEach(function(cat){
+      var b = Number(fstate.budgets[cat]) || 0;
+      var used = spend[cat] || 0;
+      var pct = b > 0 ? Math.min(100, used / b * 100) : 0;
+      var cls = b > 0 && used > b ? 'over' : (b > 0 && used / b > 0.8 ? 'warn' : '');
+      var row = document.createElement('div');
+      row.innerHTML = '<div class="fin-row"><span>' + cat + '</span>' +
+        '<span><b>¥' + used + '</b> / <input class="b-in" type="number" inputmode="decimal" value="' + (b || '') +
+        '" data-cat="' + cat + '" placeholder="未设"></span></div>' +
+        '<div class="bar"><i class="' + cls + '" style="width:' + pct + '%"></i></div>';
+      box.appendChild(row);
+    });
+    box.querySelectorAll('.b-in').forEach(function(inp){
+      inp.onchange = function(){
+        var cat = inp.getAttribute('data-cat');
+        var v = Number(inp.value);
+        if (v >= 0) fstate.budgets[cat] = round2(v); else delete fstate.budgets[cat];
+        fSave(); fRenderBudgets(); fRenderCheck();
+      };
+    });
+    $('fBudgetTag').textContent = fMonth();
+  }
+
+  function fRenderAssets(){
+    var box = $('fAssetList'), nw = fNetWorth();
+    $('fNetTag').textContent = '净资产 ¥' + nw.net;
+    if (!fstate.assets.length){
+      box.innerHTML = '<div class="empty">还没有资产记录。下面填名称和金额，选类型添加。</div>';
+      return;
+    }
+    box.innerHTML = '';
+    fstate.assets.forEach(function(x){
+      var row = document.createElement('div'); row.className = 'item';
+      var isDebt = x.kind === '负债';
+      row.innerHTML = '<div class="ico">' + (isDebt ? '🔴' : '🟢') + '</div>' +
+        '<div class="mid"><div class="t1">' + x.name + '</div><div class="t2">' + x.kind + '</div></div>' +
+        '<div class="amt ' + (isDebt ? 'bad' : 'ok') + '">' + (isDebt ? '-' : '+') + '¥' + x.amount + '</div>';
+      var del = document.createElement('button');
+      del.className = 'del'; del.textContent = '✕';
+      del.onclick = function(){
+        fstate.assets = fstate.assets.filter(function(y){ return y.id !== x.id; });
+        fSave(); fRenderAssets(); fRenderCheck();
+      };
+      row.appendChild(del);
+      box.appendChild(row);
+    });
+  }
+
+  function fRenderGoals(){
+    var box = $('fGoalList');
+    $('fGoalTag').textContent = fstate.goals.length + ' 个';
+    if (!fstate.goals.length){
+      box.innerHTML = '<div class="empty">还没有目标。建议第一个目标：应急金 = 3–6 个月支出。</div>';
+      return;
+    }
+    box.innerHTML = '';
+    fstate.goals.forEach(function(g){
+      var target = Number(g.target) || 0, saved = Number(g.saved) || 0;
+      var pct = target > 0 ? Math.min(100, saved / target * 100) : 0;
+      var left = Math.max(0, round2(target - saved));
+      var perMonth = left > 0 ? round2(left / 6) : 0;
+      var row = document.createElement('div');
+      row.style.marginBottom = '12px';
+      row.innerHTML = '<div class="fin-row"><b>' + g.name + '</b><span>¥' + saved + ' / ¥' + target + '</span></div>' +
+        '<div class="bar"><i class="' + (pct >= 100 ? '' : 'warn') + '" style="width:' + pct + '%"></i></div>' +
+        '<div class="fin-row"><span>还差 ¥' + left + '</span><span>按 6 个月算每月存 ¥' + perMonth + '</span></div>';
+      var del = document.createElement('button');
+      del.className = 'btn-mini'; del.textContent = '删除目标';
+      del.style.marginTop = '8px';
+      del.onclick = function(){
+        if (!confirm('删除目标「' + g.name + '」？')) return;
+        fstate.goals = fstate.goals.filter(function(y){ return y.id !== g.id; });
+        fSave(); fRenderGoals(); fRenderCheck();
+      };
+      row.appendChild(del);
+      box.appendChild(row);
+    });
+  }
+
+  function fRenderCheck(){
+    var h = fHealth();
+    $('fScore').textContent = h.score;
+    $('fScoreTag').textContent = h.level;
+    $('fScoreHint').innerHTML =
+      '储蓄率 <b>' + Math.round(h.rate * 100) + '%</b> · 应急金 <b>' + Math.round(h.emerg * 10) / 10 +
+      ' 个月</b> · 负债率 <b>' + Math.round(h.debtRatio * 100) + '%</b><br>' +
+      (h.items.length ? '需要关注 ' + h.items.length + ' 项' : '各项指标正常，保持');
+    var box = $('fCheckList');
+    box.innerHTML = h.items.map(function(t){
+      return '<div class="fin-row" style="color:#8C2F22"><span>⚠️ ' + t + '</span></div>';
+    }).join('') || '<div class="fin-row" style="color:#1E7B45"><span>✅ 没有明显问题</span></div>';
+  }
+
+  function fRenderChart(){
+    var box = $('fChart'), months = [];
+    for (var i = 5; i >= 0; i--){
+      var d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+      var mm = d.getFullYear() + '-' + pad2(d.getMonth() + 1);
+      var s = moneySummarize(mstate.records, mm);
+      months.push({ m: mm, inc: s.income, exp: s.expense });
+    }
+    var max = 1;
+    months.forEach(function(x){ max = Math.max(max, x.inc, x.exp); });
+    box.innerHTML = '';
+    months.forEach(function(x){
+      var col = document.createElement('div'); col.className = 'col';
+      col.innerHTML = '<div class="bars">' +
+        '<i class="inc" style="height:' + Math.max(2, x.inc / max * 96) + '%"></i>' +
+        '<i class="exp" style="height:' + Math.max(2, x.exp / max * 96) + '%"></i></div>' +
+        '<div class="lb">' + x.m.slice(5) + '</div>';
+      box.appendChild(col);
+    });
+  }
+
+  function renderFin(){
+    var s = moneySummarize(mstate.records, fMonth());
+    $('fInc').textContent = '¥' + s.income;
+    $('fExp').textContent = '¥' + s.expense;
+    var rate = s.income > 0 ? Math.round((s.income - s.expense) / s.income * 100) : 0;
+    $('fRate').textContent = s.income > 0 ? rate + '%' : '—';
+    $('fNet').textContent = '¥' + fNetWorth().net;
+    fRenderBudgets(); fRenderAssets(); fRenderGoals(); fRenderCheck(); fRenderChart();
+  }
+
+  $('faAdd').onclick = function(){
+    var name = ($('faName').value || '').trim(), amt = Number($('faAmt').value);
+    if (!name || !amt){ toast('填名称和金额'); return; }
+    fstate.assets = fstate.assets.concat([{ id: uid(), name: name.slice(0, 20), amount: round2(amt), kind: $('faKind').value }]);
+    fSave(); $('faName').value = ''; $('faAmt').value = '';
+    fRenderAssets(); fRenderCheck(); toast('已添加');
+  };
+  $('fgAdd').onclick = function(){
+    var name = ($('fgName').value || '').trim(), target = Number($('fgTarget').value);
+    if (!name || !target){ toast('填目标名和金额'); return; }
+    fstate.goals = fstate.goals.concat([{ id: uid(), name: name.slice(0, 20), target: round2(target), saved: round2(Number($('fgSaved').value) || 0) }]);
+    fSave(); $('fgName').value = ''; $('fgTarget').value = ''; $('fgSaved').value = '';
+    fRenderGoals(); fRenderCheck(); toast('已添加目标');
+  };
+  fLoadAll();
 
   // ══════════ 初始化 ══════════
   $('exportAll').onclick = function(){
