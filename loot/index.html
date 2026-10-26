@@ -154,6 +154,15 @@
         <div><label>日期</label><input type="date" id="wDate"></div>
       </div>
       <button class="btn" id="watchAdd">记 一 笔 价 格</button>
+      <div class="row" style="margin-top:10px">
+        <div><label>目标价（≤ 这个价就提醒）</label>
+          <input type="number" id="wTarget" inputmode="decimal" placeholder="如 7.00"></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn-mini" id="targetSet">设目标价</button></div>
+      </div>
+    </div>
+    <div class="card" id="alertCard" style="display:none;background:#EAF6EF;border:1px solid #BFE3CC">
+      <h2 style="color:#1E6B41">🎯 达标提醒 <span class="tag" id="alertTag"></span></h2>
+      <div id="alertBody" style="font-size:13px;color:#1E6B41;line-height:1.8"></div>
     </div>
     <div class="card">
       <h2>📈 观察清单</h2>
@@ -161,6 +170,20 @@
       <div class="row" style="margin-top:10px">
         <button class="btn-mini" id="watchExport">导出 CSV</button>
       </div>
+    </div>
+    <div class="card">
+      <h2>🔔 达标推送 <span class="tag">Bark（iPhone，免费）</span></h2>
+      <div class="row">
+        <div><label>Bark Key</label><input type="text" id="barkKey" placeholder="从 Bark App 复制 key"></div>
+        <div style="display:flex;align-items:flex-end;gap:6px">
+          <button class="btn-mini" id="barkSave">保存</button>
+          <button class="btn-mini" id="barkTest">测试</button>
+        </div>
+      </div>
+      <div class="warnbox" style="background:#FFF6E6;border-color:#E0A93B;color:#7A5B1E">
+        网页无法主动后台推送。每次打开 App 点「检查达标」，达标商品会通过 Bark 推到你手机。
+      </div>
+      <button class="btn" id="checkNow">检查达标并推送</button>
     </div>
   </div>
 </div>
@@ -177,6 +200,23 @@
         <button data-d="3">红线</button>
       </div>
       <div id="docBody"></div>
+    </div>
+    <div class="card">
+      <h2>🔖 书签小工具 <span class="tag">一键把商品价格存进来</span></h2>
+      <p style="font-size:12.5px;color:#5A6270;line-height:1.7;margin:0 0 8px">
+        把下面代码存成浏览器书签。在淘宝/京东/拼多多商品页点一下，就会把标题和价格存进「观察」。
+      </p>
+      <textarea id="bmCode" readonly style="width:100%;height:92px;font-size:10px;font-family:Consolas,monospace;border:1px solid var(--line);border-radius:9px;padding:8px;background:#FAF8F4;color:#3E4450"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn-mini primary" id="bmCopy">复制代码</button>
+        <button class="btn-mini" id="bmHow">怎么装</button>
+      </div>
+      <div id="bmHowBox" style="display:none;margin-top:10px;font-size:12px;color:#5A6270;line-height:1.9">
+        ① 手机浏览器：随便建一个书签 → 编辑它 → 网址/地址栏粘贴上面的代码 → 保存<br>
+        ② 电脑 Chrome：书签管理器 → 新建书签 → 名称填「存价格」→ 网址粘贴代码<br>
+        ③ 打开商品页 → 点这个书签 → 自动跳到撸货台并记下价格<br>
+        <span style="color:#A0642B">注意：价格取页面上第一个 ¥ 数字，可能不准，记完可以手动改。</span>
+      </div>
     </div>
   </div>
 </div>
@@ -280,6 +320,42 @@ var WATCH_KEY = 'dsh_watch_v1';
 var CHECK_KEY = 'dsh_loot_check_v1';
 var REC_HEADER = '进货日期,商品,进货单价,数量,进货运费,出货单价,出货运费,平台费率,总成本,收入,利润,利润率,周转天数,状态,备注';
 var WATCH_HEADER = '日期,商品,平台,价格';
+var TARGET_KEY = 'dsh_watch_target_v1';
+var BARK_KEY = 'dsh_bark_key_v1';
+
+function getTargets(){ try { return JSON.parse(localStorage.getItem(TARGET_KEY) || '{}'); } catch(e){ return {}; } }
+function setTarget(name, price){
+  var t = getTargets();
+  t[name] = r2(Number(price) || 0);
+  try { localStorage.setItem(TARGET_KEY, JSON.stringify(t)); } catch(e){}
+  return t;
+}
+function checkTargets(watchList, targets){
+  var sums = watchSummary(watchList), hits = [];
+  sums.forEach(function(m){
+    var tg = targets[m.name];
+    if (tg && m.latest > 0 && m.latest <= tg){
+      var last = m.points[m.points.length - 1] || {};
+      hits.push({ name: m.name, latest: m.latest, target: tg, platform: last.platform || '',
+                  saved: r2(tg - m.latest) });
+    }
+  });
+  return hits;
+}
+function buildBookmarklet(appUrl){
+  var base = appUrl || 'https://yeqing663.github.io/money-tracker/loot/';
+  return 'javascript:(function(){' +
+    'var t=document.title.slice(0,26);' +
+    'var mm=document.body.innerText.match(/[\\u00a5\\uffe5]\\s*(\\d+(?:\\.\\d{1,2})?)/);' +
+    'var p=mm?mm[1]:"0";' +
+    'var u="' + base + '?add=1&name="+encodeURIComponent(t)+"&price="+encodeURIComponent(p)+"&plat="+encodeURIComponent(location.hostname.replace("www.",""));' +
+    'location.href=u;})()';
+}
+function barkUrl(key, title, body){
+  return 'https://api.day.app/' + encodeURIComponent(key) + '/' +
+    encodeURIComponent(title || '撸货台') + '/' + encodeURIComponent(body || '');
+}
+
 
 function recRecord(o){
   var d = calcDeal(o);
@@ -409,7 +485,7 @@ function show(v){
   });
   window.scrollTo(0, 0);
   if (v === 'rec') renderRec();
-  if (v === 'watch') renderWatch();
+  if (v === 'watch'){ renderWatch(); renderAlert(); }
 }
 document.querySelectorAll('.tabbar button').forEach(function(b){
   b.onclick = function(){ show(b.getAttribute('data-v')); };
@@ -547,13 +623,17 @@ function renderWatch(){
     return;
   }
   var sums = watchSummary(state.watch);
+  var targets = getTargets();
   box.innerHTML = '';
   sums.forEach(function(m){
     var row = document.createElement('div'); row.className = 'item';
     var pct = m.min > 0 ? Math.round(m.deltaPct * 1000) / 10 : 0;
-    row.innerHTML = '<div class="mid"><div class="t1">' + m.name + '</div>' +
+    var tg = targets[m.name];
+    var hit = tg && m.latest > 0 && m.latest <= tg;
+    row.innerHTML = '<div class="mid"><div class="t1">' + m.name +
+      (hit ? ' <span style="color:#1E7B45;font-size:11.5px">🎯达标</span>' : '') + '</div>' +
       '<div class="t2">最低 ¥' + m.min + ' · 最新 ¥' + m.latest + '（' + m.latestDate + '）· ' +
-      m.points.length + ' 次记录</div></div>' +
+      m.points.length + ' 次记录' + (tg ? ' · 目标 ¥' + tg : '') + '</div></div>' +
       '<div class="amt ' + (pct > 0 ? 'bad' : 'ok') + '">' + (pct > 0 ? '+' : '') + pct + '%</div>';
     box.appendChild(row);
   });
@@ -576,6 +656,82 @@ $('watchExport').onclick = function(){
   download('价格观察_' + todayStr().replace(/-/g, '') + '.csv', lines.join('\r\n') + '\r\n');
   toast('已导出');
 };
+
+// ══════════ 目标价 / 达标推送 ══════════
+function renderAlert(){
+  var hits = checkTargets(state.watch, getTargets());
+  var card = $('alertCard');
+  if (!hits.length){ card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  $('alertTag').textContent = hits.length + ' 个达标';
+  $('alertBody').innerHTML = hits.map(function(h){
+    return '🎯 <b>' + h.name + '</b> 现价 ¥' + h.latest + ' ≤ 目标 ¥' + h.target +
+      (h.platform ? '（' + h.platform + '）' : '') + '，比目标便宜 ¥' + h.saved;
+  }).join('<br>');
+}
+function pushBark(title, body){
+  var key = localStorage.getItem(BARK_KEY) || '';
+  if (!key){ toast('先保存 Bark Key'); return false; }
+  var img = new Image();
+  img.src = barkUrl(key, title, body);
+  return true;
+}
+$('targetSet').onclick = function(){
+  var name = ($('wName').value || '').trim();
+  var price = Number($('wTarget').value);
+  if (!name){ toast('先在商品名里填要设目标价的商品'); $('wName').focus(); return; }
+  if (!price){ toast('填目标价'); $('wTarget').focus(); return; }
+  setTarget(name, price);
+  renderWatch(); renderAlert();
+  toast('已设置：' + name + ' ≤ ¥' + price);
+};
+$('checkNow').onclick = function(){
+  var hits = checkTargets(state.watch, getTargets());
+  renderAlert();
+  if (!hits.length){ toast('暂时没有达标商品'); return; }
+  var body = hits.map(function(h){ return h.name + ' ¥' + h.latest + '（目标 ¥' + h.target + '）'; }).join('；');
+  if (pushBark('撸货台：' + hits.length + ' 个达标', body)) toast('已推送到手机');
+};
+$('barkSave').onclick = function(){
+  var k = ($('barkKey').value || '').trim();
+  if (!k){ toast('填 Bark Key'); return; }
+  try { localStorage.setItem(BARK_KEY, k); } catch(e){}
+  toast('已保存 Bark Key');
+};
+$('barkTest').onclick = function(){
+  var k = ($('barkKey').value || localStorage.getItem(BARK_KEY) || '').trim();
+  if (!k){ toast('先填 Bark Key'); return; }
+  try { localStorage.setItem(BARK_KEY, k); } catch(e){}
+  if (pushBark('撸货台测试', '推送成功，说明配置好了')) toast('已发送测试推送');
+};
+$('barkKey').value = localStorage.getItem(BARK_KEY) || '';
+
+// 书签工具
+$('bmCode').value = buildBookmarklet('https://yeqing663.github.io/money-tracker/loot/');
+$('bmCopy').onclick = function(){ copyText($('bmCode').value, '书签代码已复制'); };
+$('bmHow').onclick = function(){
+  var b = $('bmHowBox');
+  b.style.display = b.style.display === 'none' ? 'block' : 'none';
+};
+
+// URL 参数：?add=1&name=..&price=..&plat=..
+function handleUrlAdd(){
+  var q = location.search.replace(/^\?/, '');
+  if (!q) return;
+  var p = {};
+  q.split('&').forEach(function(kv){
+    var i = kv.indexOf('=');
+    if (i < 0) return;
+    try { p[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1)); } catch(e){ p[kv.slice(0, i)] = kv.slice(i + 1); }
+  });
+  if (p.add === '1' && p.name && p.price){
+    state.watch = watchAdd(state.watch, { name: p.name, price: p.price, platform: p.plat || '', date: todayStr() });
+    save(WATCH_KEY, state.watch);
+    renderWatch(); renderAlert(); renderStats();
+    show('watch');
+    toast('已从网页导入：' + p.name + ' ¥' + p.price);
+  }
+}
 
 // ══════════ 知识页 ══════════
 var DOCS = [
@@ -683,7 +839,9 @@ state.watch = load(WATCH_KEY, []);
 renderStats();
 renderRec();
 renderWatch();
+renderAlert();
 show('calc');
+handleUrlAdd();
 </script>
 </body>
 </html>
