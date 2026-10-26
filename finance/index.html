@@ -780,7 +780,17 @@ function parseRecordsCsv(text){
   else if (headerCells.indexOf('交易订单号') >= 0 || headerCells.indexOf('商家订单号') >= 0) platform = '支付宝';
 
   var dataRows = headerIdx >= 0 ? rows.slice(headerIdx + 1) : rows;
-  if (headerIdx < 0) cols = { date: 0, type: 1, category: 2, amount: 3, paymethod: 4, note: 5 };
+  if (headerIdx < 0){
+    // 无表头：先看是否是「微信/支付宝账单行」（第 5 列是收/支）
+    var probe = (rows[0] || []).map(function(c){ return String(c).trim(); });
+    var probeType = probe[4] || '';
+    if (probe.length >= 6 && (probeType === '收入' || probeType === '支出')){
+      cols = { date: 0, type: 4, category: 1, merchant: 2, goods: 3, amount: 5, paymethod: 6 };
+      platform = '微信';
+    } else {
+      cols = { date: 0, type: 1, category: 2, amount: 3, paymethod: 4, note: 5 };
+    }
+  }
 
   var out = [], skipped = 0;
   dataRows.forEach(function(row){
@@ -930,7 +940,7 @@ function parsePayText(text){
   for (i = 0; i < PAY_EXP.length; i++) if (raw.indexOf(PAY_EXP[i]) >= 0) exp++;
   var type = inc > exp ? '收入' : '支出';
   var merchant = payMerchant(raw);
-  var account = raw.indexOf('微信') >= 0 ? '微信'
+  var account = raw.indexOf('微信') >= 0 || raw.indexOf('零钱') >= 0 ? '微信'
     : raw.indexOf('支付宝') >= 0 ? '支付宝'
     : /银行|储蓄卡|信用卡/.test(raw) ? '银行卡' : '现金';
   return {
