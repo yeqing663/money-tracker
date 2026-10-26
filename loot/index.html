@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1B2430">
+<title>撸货台 · 算账 / 记录 / 观察</title>
+<style>
+  :root{--bg:#F6F4F0;--card:#fff;--ink:#23272E;--sub:#7C8290;--line:#E6E1D8;
+        --accent:#C9642B;--accent2:#E08A4B;--navy:#1B2430;--ok:#1E7B45;--bad:#C0392B}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;font-size:15px;line-height:1.55;
+       padding-bottom:76px}
+  .hero{background:linear-gradient(150deg,#1B2430,#3A2A22);color:#F5EFE6;padding:22px 18px 18px}
+  .hero h1{margin:0 0 4px;font-size:21px;letter-spacing:1px;font-weight:600}
+  .hero p{margin:0;font-size:12px;color:#B9AE9E}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+  .stat{background:rgba(255,255,255,.08);border-radius:10px;padding:8px 6px;text-align:center}
+  .stat .k{font-size:10.5px;color:#B9AE9E}
+  .stat .v{font-size:16px;font-weight:700;margin-top:2px}
+  .stat .v.up{color:#7FD1A3}.stat .v.down{color:#F09A8E}
+  .wrap{max-width:640px;margin:0 auto;padding:0 12px}
+  .card{background:var(--card);border-radius:14px;padding:14px;margin:12px 0;
+        box-shadow:0 2px 10px rgba(60,40,20,.05)}
+  .card h2{font-size:14px;margin:0 0 10px;color:var(--navy);font-weight:600;
+           display:flex;justify-content:space-between;align-items:center}
+  .card h2 .tag{font-size:11px;color:var(--sub);font-weight:400}
+  label{font-size:12px;color:var(--sub);display:block;margin-bottom:3px}
+  input,select{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;
+    font-size:15px;font-family:inherit;color:var(--ink);background:#FCFBF8}
+  input:focus,select:focus{outline:none;border-color:var(--accent);background:#fff}
+  .row{display:flex;gap:10px}.row>*{flex:1}
+  .btn{width:100%;border:0;border-radius:11px;padding:13px;font-size:15.5px;font-family:inherit;
+    font-weight:600;color:#fff;background:linear-gradient(135deg,#C9642B,#A64B1C);margin-top:12px;letter-spacing:2px}
+  .btn:active{transform:scale(.99)}
+  .btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line);font-weight:500;
+    font-size:14px;letter-spacing:0;margin-top:8px}
+  .btn-mini{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;
+    padding:8px 10px;font-size:12.5px;font-family:inherit;flex:1}
+  .btn-mini.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .result{margin-top:12px;display:none}
+  .result.show{display:block}
+  .kv{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed #EEE8DE;font-size:13.5px}
+  .kv:last-child{border-bottom:0}
+  .kv b{font-weight:600;color:var(--navy)}
+  .kv b.ok{color:var(--ok)}.kv b.bad{color:var(--bad)}
+  .verdict{margin-top:10px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6}
+  .verdict.go{background:#EAF6EF;color:#1E6B41;border-left:3px solid var(--ok)}
+  .verdict.warn{background:#FFF6E6;color:#7A5B1E;border-left:3px solid #E0A93B}
+  .verdict.no{background:#FDECEA;color:#8C2F22;border-left:3px solid var(--bad)}
+  .list .item{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid #F1ECE3}
+  .list .item:last-child{border-bottom:0}
+  .list .mid{flex:1;min-width:0}
+  .list .t1{font-size:13.5px;font-weight:600}
+  .list .t2{font-size:11.5px;color:var(--sub);margin-top:2px}
+  .list .amt{font-size:14px;font-weight:700;white-space:nowrap}
+  .list .amt.ok{color:var(--ok)}.list .amt.bad{color:var(--bad)}
+  .list .del{border:0;background:transparent;color:#C0B8AB;font-size:16px;padding:4px 2px}
+  .empty{color:var(--sub);font-size:13px;text-align:center;padding:12px 0}
+  .sub-nav{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px}
+  .sub-nav button{border:1px solid var(--line);background:#fff;color:var(--sub);border-radius:20px;
+    padding:6px 12px;font-size:12.5px;font-family:inherit;white-space:nowrap}
+  .sub-nav button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+  .doc h3{font-size:13.5px;color:var(--navy);margin:14px 0 6px}
+  .doc p,.doc li{font-size:13px;color:#3E4450;line-height:1.7}
+  .doc table{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0}
+  .doc th{background:#F3EEE6;color:#6B5537;padding:5px;border:1px solid #E6DCCB;text-align:left}
+  .doc td{padding:5px;border:1px solid #EDE6D9}
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:#fff;border-top:1px solid var(--line);
+          display:flex;padding:6px 0 max(8px,env(safe-area-inset-bottom))}
+  .tabbar button{flex:1;border:0;background:transparent;padding:4px 2px;font-family:inherit;
+    font-size:10.5px;color:var(--sub);display:flex;flex-direction:column;align-items:center;gap:2px}
+  .tabbar button .ic{font-size:18px;line-height:1}
+  .tabbar button.on{color:var(--accent);font-weight:600}
+  .foot{font-size:11px;color:#A49C90;text-align:center;margin:16px 4px}
+  .warnbox{background:#FDECEA;border-left:3px solid var(--bad);padding:9px 11px;border-radius:8px;
+    font-size:12px;color:#8C2F22;margin-top:10px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>撸货台</h1>
+  <p>算清一单的账，再决定做不做</p>
+  <div class="stats">
+    <div class="stat"><div class="k">本月单数</div><div class="v" id="sCount">0</div></div>
+    <div class="stat"><div class="k">投入</div><div class="v" id="sCost">0</div></div>
+    <div class="stat"><div class="k">利润</div><div class="v" id="sProfit">0</div></div>
+    <div class="stat"><div class="k">利润率</div><div class="v" id="sRate">—</div></div>
+  </div>
+</div>
+
+<!-- ═══════ 算账 ═══════ -->
+<div class="view" id="v-calc">
+  <div class="wrap">
+    <div class="card">
+      <h2>🧮 单笔算账 <span class="tag">填完自动算</span></h2>
+      <div class="row" style="margin-bottom:10px">
+        <div><label>进货单价（元）</label><input type="number" id="inUnit" inputmode="decimal" placeholder="0.00"></div>
+        <div><label>数量</label><input type="number" id="qty" inputmode="numeric" value="1"></div>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <div><label>进货运费（元）</label><input type="number" id="shipIn" inputmode="decimal" placeholder="0"></div>
+        <div><label>出货单价（元）</label><input type="number" id="outUnit" inputmode="decimal" placeholder="0.00"></div>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <div><label>出货运费（元）</label><input type="number" id="shipOut" inputmode="decimal" placeholder="0"></div>
+        <div><label>平台费率 %</label><input type="number" id="feeRate" inputmode="decimal" value="0"></div>
+      </div>
+      <div class="row">
+        <div><label>预计周转（天）</label><input type="number" id="turn" inputmode="numeric" value="14"></div>
+        <div><label>商品名（选填）</label><input type="text" id="name" placeholder="纸巾 24 包"></div>
+      </div>
+      <button class="btn" id="calc">算 一 算</button>
+      <button class="btn ghost" id="saveRec">保存为记录</button>
+      <div class="result" id="res"></div>
+    </div>
+    <div class="foot">公式：利润 = 收入 − 平台费 − 总成本 − 出货运费</div>
+  </div>
+</div>
+
+<!-- ═══════ 记录 ═══════ -->
+<div class="view" id="v-rec" style="display:none">
+  <div class="wrap">
+    <div class="card">
+      <h2>📒 进货记录 <span class="tag" id="recTag">0 笔</span></h2>
+      <div class="list" id="recList"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn-mini" id="recExport">导出 CSV</button>
+        <button class="btn-mini" id="recCopy">复制 CSV</button>
+        <button class="btn-mini" id="recImport">导入 CSV</button>
+      </div>
+      <input type="file" id="recFile" accept=".csv,text/csv" style="display:none">
+    </div>
+    <div class="card">
+      <h2>📊 月度汇总</h2>
+      <div id="monthSum" class="list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ 观察 ═══════ -->
+<div class="view" id="v-watch" style="display:none">
+  <div class="wrap">
+    <div class="card">
+      <h2>👀 价格观察 <span class="tag" id="watchTag">0 条</span></h2>
+      <div class="row" style="margin-bottom:8px">
+        <div><label>商品名</label><input type="text" id="wName" placeholder="垃圾袋 100 只"></div>
+        <div><label>平台</label><input type="text" id="wPlat" placeholder="拼多多"></div>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <div><label>价格（元）</label><input type="number" id="wPrice" inputmode="decimal" placeholder="0.00"></div>
+        <div><label>日期</label><input type="date" id="wDate"></div>
+      </div>
+      <button class="btn" id="watchAdd">记 一 笔 价 格</button>
+    </div>
+    <div class="card">
+      <h2>📈 观察清单</h2>
+      <div id="watchList" class="list"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn-mini" id="watchExport">导出 CSV</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ 知识 ═══════ -->
+<div class="view" id="v-doc" style="display:none">
+  <div class="wrap">
+    <div class="card doc">
+      <h2>📚 撸货知识库</h2>
+      <div class="sub-nav" id="docNav">
+        <button data-d="0" class="on">渠道</button>
+        <button data-d="1">公式</button>
+        <button data-d="2">日历</button>
+        <button data-d="3">红线</button>
+      </div>
+      <div id="docBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ 自检 ═══════ -->
+<div class="view" id="v-check" style="display:none">
+  <div class="wrap">
+    <div class="card">
+      <h2>✅ 下单前自检 <span class="tag" id="checkTag">0/8</span></h2>
+      <div id="checkList"></div>
+      <div class="warnbox">八项全部打勾才下单。任何一项没把握，就先别买。</div>
+      <button class="btn ghost" id="checkReset" style="margin-top:10px">重置勾选</button>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <button data-v="calc" class="on"><span class="ic">🧮</span>算账</button>
+  <button data-v="rec"><span class="ic">📒</span>记录</button>
+  <button data-v="watch"><span class="ic">👀</span>观察</button>
+  <button data-v="doc"><span class="ic">📚</span>知识</button>
+  <button data-v="check"><span class="ic">✅</span>自检</button>
+</nav>
+
+<script>
+// CORE_START
+// ══════════ 工具 ══════════
+function pad2(n){ return (n < 10 ? '0' : '') + n; }
+function todayStr(d){ d = d || new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function r2(n){ return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
+function r1(n){ return Math.round((Number(n) + Number.EPSILON) * 10) / 10; }
+function csvEsc(v){
+  v = String(v === null || v === undefined ? '' : v);
+  return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+function parseCsvRows(text){
+  text = String(text || '').replace(/^\uFEFF/, '');
+  var rows = [], row = [], cur = '', inQ = false;
+  for (var i = 0; i < text.length; i++){
+    var c = text[i];
+    if (inQ){
+      if (c === '"'){ if (text[i + 1] === '"'){ cur += '"'; i++; } else inQ = false; }
+      else cur += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ','){ row.push(cur); cur = ''; }
+      else if (c === '\n'){ row.push(cur); rows.push(row); row = []; cur = ''; }
+      else if (c !== '\r') cur += c;
+    }
+  }
+  row.push(cur); rows.push(row);
+  return rows;
+}
+
+// ══════════ 核心计算 ══════════
+function calcDeal(o){
+  var inUnit = Number(o.inUnit) || 0;
+  var qty = Number(o.qty) || 1;
+  var shipIn = Number(o.shipIn) || 0;
+  var outUnit = Number(o.outUnit) || 0;
+  var shipOut = Number(o.shipOut) || 0;
+  var feeRate = Number(o.feeRate) || 0;
+  var turn = Number(o.turn) || 0;
+
+  var totalCost = r2(inUnit * qty + shipIn);
+  var revenue = r2(outUnit * qty);
+  var fee = r2(revenue * feeRate / 100);
+  var profit = r2(revenue - fee - totalCost - shipOut);
+  var margin = revenue > 0 ? profit / revenue : 0;
+  var unitCost = qty > 0 ? totalCost / qty : 0;
+  var unitProfit = qty > 0 ? profit / qty : 0;
+  // 年化：周转越快，年化越高（按单次利润率 × 年周转次数）
+  var cycles = turn > 0 ? 365 / turn : 0;
+  var annual = turn > 0 ? margin * cycles : 0;
+
+  var level, verdict;
+  if (profit <= 0){
+    level = 'no';
+    verdict = '亏本：这一单不能做。售价先减去平台费和运费，必须高于总成本。';
+  } else if (margin >= 0.2){
+    level = 'go';
+    verdict = '可以做：利润率 ' + r1(margin * 100) + '%，单件赚 ¥' + r1(unitProfit) + '。注意周转别超 30 天。';
+  } else if (margin >= 0.1){
+    level = 'warn';
+    verdict = '谨慎：利润率 ' + r1(margin * 100) + '%，单件只赚 ¥' + r1(unitProfit) + '。运费或售后一出就白干，除非量大。';
+  } else {
+    level = 'no';
+    verdict = '不建议：利润率 ' + r1(margin * 100) + '%，单件赚 ¥' + r1(unitProfit) + '。低于 10% 不值得占用本金。';
+  }
+
+  return { inUnit: inUnit, qty: qty, shipIn: shipIn, outUnit: outUnit, shipOut: shipOut,
+           feeRate: feeRate, turn: turn, totalCost: totalCost, revenue: revenue, fee: fee,
+           profit: profit, margin: margin, unitCost: r2(unitCost), unitProfit: r2(unitProfit),
+           annual: annual, level: level, verdict: verdict };
+}
+
+// ══════════ 数据层 ══════════
+var REC_KEY = 'dsh_loot_v1';
+var WATCH_KEY = 'dsh_watch_v1';
+var CHECK_KEY = 'dsh_loot_check_v1';
+var REC_HEADER = '进货日期,商品,进货单价,数量,进货运费,出货单价,出货运费,平台费率,总成本,收入,利润,利润率,周转天数,状态,备注';
+var WATCH_HEADER = '日期,商品,平台,价格';
+
+function recRecord(o){
+  var d = calcDeal(o);
+  return {
+    id: uid(), dateIn: o.dateIn || todayStr(), dateOut: o.dateOut || '',
+    name: (o.name || '').slice(0, 30), inUnit: d.inUnit, qty: d.qty, shipIn: d.shipIn,
+    outUnit: d.outUnit, shipOut: d.shipOut, feeRate: d.feeRate, turn: d.turn,
+    totalCost: d.totalCost, revenue: d.revenue, profit: d.profit, margin: d.margin,
+    status: o.status || (o.dateOut ? '已售' : '在库'), memo: (o.memo || '').slice(0, 40)
+  };
+}
+function recToCsv(list){
+  var lines = [REC_HEADER];
+  list.slice().sort(function(a, b){ return a.dateIn < b.dateIn ? -1 : 1; }).forEach(function(e){
+    lines.push([e.dateIn, e.name, e.inUnit, e.qty, e.shipIn, e.outUnit, e.shipOut, e.feeRate,
+      e.totalCost, e.revenue, e.profit, e.margin, e.turn, e.status, e.memo].map(csvEsc).join(','));
+  });
+  return lines.join('\r\n') + '\r\n';
+}
+function recParseCsv(text){
+  var rows = parseCsvRows(text), out = [];
+  for (var r = 1; r < rows.length; r++){
+    var v = rows[r];
+    if (!v || v.length < 4) continue;
+    var date = (v[0] || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    out.push(recRecord({
+      dateIn: date, name: (v[1] || '').trim(), inUnit: v[2], qty: v[3], shipIn: v[4],
+      outUnit: v[5], shipOut: v[6], feeRate: v[7], turn: v[12], status: (v[13] || '').trim(),
+      memo: (v[14] || '').trim()
+    }));
+  }
+  return out;
+}
+function recSummarize(list, month){
+  month = month || todayStr().slice(0, 7);
+  var rows = list.filter(function(e){ return String(e.dateIn).slice(0, 7) === month; });
+  var cost = 0, profit = 0, rev = 0;
+  rows.forEach(function(e){ cost += e.totalCost; profit += e.profit; rev += e.revenue; });
+  return { count: rows.length, cost: r2(cost), profit: r2(profit), revenue: r2(rev),
+           rate: rev > 0 ? profit / rev : 0 };
+}
+function monthSummary(list){
+  var map = {};
+  list.forEach(function(e){
+    var m = String(e.dateIn).slice(0, 7);
+    if (!map[m]) map[m] = { month: m, count: 0, cost: 0, profit: 0, revenue: 0 };
+    map[m].count++; map[m].cost += e.totalCost; map[m].profit += e.profit; map[m].revenue += e.revenue;
+  });
+  return Object.keys(map).sort().reverse().map(function(k){
+    var x = map[k];
+    return { month: x.month, count: x.count, cost: r2(x.cost), profit: r2(x.profit),
+             revenue: r2(x.revenue), rate: x.revenue > 0 ? x.profit / x.revenue : 0 };
+  });
+}
+function watchAdd(list, o){
+  return list.concat([{ id: uid(), date: o.date || todayStr(), name: (o.name || '').slice(0, 30),
+    platform: (o.platform || '').slice(0, 12), price: r2(Number(o.price) || 0) }]);
+}
+function watchSummary(list){
+  var map = {};
+  list.forEach(function(e){
+    var k = e.name;
+    if (!map[k]) map[k] = { name: k, points: [], min: Infinity, latest: null, latestDate: '' };
+    var m = map[k];
+    m.points.push({ date: e.date, platform: e.platform, price: e.price });
+    if (e.price < m.min) m.min = e.price;
+    if (e.date >= m.latestDate){ m.latestDate = e.date; m.latest = e.price; }
+  });
+  return Object.keys(map).map(function(k){
+    var m = map[k];
+    m.points.sort(function(a, b){ return a.date < b.date ? -1 : 1; });
+    m.min = m.min === Infinity ? 0 : m.min;
+    m.delta = m.latest - m.min;
+    m.deltaPct = m.min > 0 ? m.delta / m.min : 0;
+    return m;
+  }).sort(function(a, b){ return b.points.length - a.points.length; });
+}
+// CORE_END
+
+// ══════════ 状态 ══════════
+var state = { records: [], watch: [], last: null };
+
+function $(id){ return document.getElementById(id); }
+function toast(msg, ms){
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:rgba(27,36,48,.94);' +
+    'color:#fff;font-size:13px;padding:10px 16px;border-radius:20px;z-index:99;max-width:80%;text-align:center';
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, ms || 1600);
+}
+function load(key, def){
+  try { var v = JSON.parse(localStorage.getItem(key) || 'null'); return v || def; } catch(e){ return def; }
+}
+function save(key, v){ try { localStorage.setItem(key, JSON.stringify(v)); } catch(e){} }
+function download(name, text){
+  var blob = new Blob(['\uFEFF' + text], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 800);
+}
+function copyText(text, okMsg){
+  function done(){ toast(okMsg || '已复制'); }
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(function(){ fallbackCopy(text); done(); });
+  } else { fallbackCopy(text); done(); }
+}
+function fallbackCopy(text){
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } catch(e){}
+  ta.remove();
+}
+
+// ══════════ 视图切换 ══════════
+var VIEWS = { calc: 'v-calc', rec: 'v-rec', watch: 'v-watch', doc: 'v-doc', check: 'v-check' };
+function show(v){
+  Object.keys(VIEWS).forEach(function(k){
+    var el = $(VIEWS[k]);
+    if (el) el.style.display = k === v ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tabbar button').forEach(function(b){
+    b.classList.toggle('on', b.getAttribute('data-v') === v);
+  });
+  window.scrollTo(0, 0);
+  if (v === 'rec') renderRec();
+  if (v === 'watch') renderWatch();
+}
+document.querySelectorAll('.tabbar button').forEach(function(b){
+  b.onclick = function(){ show(b.getAttribute('data-v')); };
+});
+
+// ══════════ 算账页 ══════════
+function readForm(){
+  return {
+    inUnit: $('inUnit').value, qty: $('qty').value, shipIn: $('shipIn').value,
+    outUnit: $('outUnit').value, shipOut: $('shipOut').value,
+    feeRate: $('feeRate').value, turn: $('turn').value, name: $('name').value
+  };
+}
+function renderResult(d){
+  var box = $('res');
+  box.classList.add('show');
+  var m = r1(d.margin * 100);
+  box.innerHTML =
+    '<div class="kv"><span>总成本（含进货运费）</span><b>¥' + d.totalCost + '</b></div>' +
+    '<div class="kv"><span>单件成本</span><b>¥' + d.unitCost + '</b></div>' +
+    '<div class="kv"><span>收入</span><b>¥' + d.revenue + '</b></div>' +
+    '<div class="kv"><span>平台费</span><b>¥' + d.fee + '</b></div>' +
+    '<div class="kv"><span>利润</span><b class="' + (d.profit > 0 ? 'ok' : 'bad') + '">¥' + d.profit + '</b></div>' +
+    '<div class="kv"><span>利润率</span><b class="' + (d.margin >= 0.2 ? 'ok' : (d.margin >= 0.1 ? '' : 'bad')) + '">' + m + '%</b></div>' +
+    '<div class="kv"><span>单件利润</span><b>¥' + d.unitProfit + '</b></div>' +
+    (d.turn > 0 ? '<div class="kv"><span>周转 ' + d.turn + ' 天 → 年化</span><b>' + r1(d.annual * 100) + '%</b></div>' : '') +
+    '<div class="verdict ' + d.level + '">' + d.verdict + '</div>';
+}
+$('calc').onclick = function(){
+  var f = readForm();
+  if (!Number(f.inUnit) || !Number(f.outUnit)){ toast('先填进货单价和出货单价'); return; }
+  var d = calcDeal(f);
+  state.last = d;
+  renderResult(d);
+  if (navigator.vibrate) navigator.vibrate(10);
+};
+$('saveRec').onclick = function(){
+  if (!state.last){ toast('先算一算再保存'); return; }
+  var d = state.last;
+  var rec = recRecord({ dateIn: todayStr(), name: $('name').value, inUnit: d.inUnit,
+    qty: d.qty, shipIn: d.shipIn, outUnit: d.outUnit, shipOut: d.shipOut,
+    feeRate: d.feeRate, turn: d.turn, status: '在库' });
+  state.records = state.records.concat([rec]);
+  save(REC_KEY, state.records);
+  renderStats();
+  toast('已保存（状态：在库）');
+};
+
+// ══════════ 头部统计 ══════════
+function renderStats(){
+  var s = recSummarize(state.records);
+  var pct = Math.round(s.rate * 1000) / 10;
+  $('sCount').textContent = s.count;
+  $('sCost').textContent = '¥' + s.cost;
+  var pf = $('sProfit');
+  pf.textContent = (s.profit >= 0 ? '+' : '') + '¥' + s.profit;
+  pf.className = 'v ' + (s.profit >= 0 ? 'up' : 'down');
+  $('sRate').textContent = s.count ? pct + '%' : '—';
+}
+
+// ══════════ 记录页 ══════════
+function renderRec(){
+  var box = $('recList');
+  $('recTag').textContent = state.records.length + ' 笔';
+  if (!state.records.length){
+    box.innerHTML = '<div class="empty">还没有记录。去「算账」算完点「保存为记录」。</div>';
+  } else {
+    box.innerHTML = '';
+    state.records.slice().sort(function(a, b){ return a.dateIn < b.dateIn ? 1 : -1; }).forEach(function(e){
+      var row = document.createElement('div'); row.className = 'item';
+      row.innerHTML = '<div class="mid"><div class="t1">' + (e.name || '未命名') +
+        ' ×' + e.qty + '</div><div class="t2">' + e.dateIn + ' · 成本 ¥' + e.totalCost +
+        ' · ' + e.status + '</div></div>' +
+        '<div class="amt ' + (e.profit >= 0 ? 'ok' : 'bad') + '">' +
+        (e.profit >= 0 ? '+' : '') + '¥' + e.profit + '</div>';
+      var del = document.createElement('button');
+      del.className = 'del'; del.textContent = '✕';
+      del.onclick = function(){
+        if (!confirm('删除这条记录？')) return;
+        state.records = state.records.filter(function(x){ return x.id !== e.id; });
+        save(REC_KEY, state.records); renderRec(); renderStats();
+      };
+      row.appendChild(del);
+      box.appendChild(row);
+    });
+  }
+  var ms = monthSummary(state.records);
+  var sum = $('monthSum');
+  if (!ms.length){ sum.innerHTML = '<div class="empty">暂无月度数据</div>'; return; }
+  sum.innerHTML = '';
+  ms.forEach(function(m){
+    var row = document.createElement('div'); row.className = 'item';
+    row.innerHTML = '<div class="mid"><div class="t1">' + m.month + ' · ' + m.count + ' 单</div>' +
+      '<div class="t2">投入 ¥' + m.cost + ' · 收入 ¥' + m.revenue + '</div></div>' +
+      '<div class="amt ' + (m.profit >= 0 ? 'ok' : 'bad') + '">' + (m.profit >= 0 ? '+' : '') + '¥' + m.profit + '</div>';
+    sum.appendChild(row);
+  });
+}
+$('recExport').onclick = function(){
+  if (!state.records.length){ toast('还没有记录'); return; }
+  download('撸货记录_' + todayStr().replace(/-/g, '') + '.csv', recToCsv(state.records));
+  toast('已导出 ' + state.records.length + ' 条');
+};
+$('recCopy').onclick = function(){
+  if (!state.records.length){ toast('还没有记录'); return; }
+  copyText(recToCsv(state.records), '已复制 CSV');
+};
+$('recImport').onclick = function(){ $('recFile').click(); };
+$('recFile').onchange = function(ev){
+  var f = ev.target.files && ev.target.files[0]; if (!f) return;
+  var rd = new FileReader();
+  rd.onload = function(){
+    var inc = recParseCsv(rd.result);
+    if (!inc.length){ toast('没读到有效记录'); return; }
+    var seen = {};
+    state.records.forEach(function(e){ seen[[e.dateIn, e.name, e.totalCost].join('|')] = 1; });
+    var added = 0;
+    inc.forEach(function(e){
+      var k = [e.dateIn, e.name, e.totalCost].join('|');
+      if (!seen[k]){ seen[k] = 1; state.records.push(e); added++; }
+    });
+    save(REC_KEY, state.records); renderRec(); renderStats();
+    toast('导入 ' + inc.length + ' 条，新增 ' + added + ' 条');
+    ev.target.value = '';
+  };
+  rd.readAsText(f, 'UTF-8');
+};
+
+// ══════════ 观察页 ══════════
+function renderWatch(){
+  var box = $('watchList');
+  $('watchTag').textContent = state.watch.length + ' 条';
+  if (!state.watch.length){
+    box.innerHTML = '<div class="empty">还没有观察记录。每周记几笔价格，不用花钱。</div>';
+    return;
+  }
+  var sums = watchSummary(state.watch);
+  box.innerHTML = '';
+  sums.forEach(function(m){
+    var row = document.createElement('div'); row.className = 'item';
+    var pct = m.min > 0 ? Math.round(m.deltaPct * 1000) / 10 : 0;
+    row.innerHTML = '<div class="mid"><div class="t1">' + m.name + '</div>' +
+      '<div class="t2">最低 ¥' + m.min + ' · 最新 ¥' + m.latest + '（' + m.latestDate + '）· ' +
+      m.points.length + ' 次记录</div></div>' +
+      '<div class="amt ' + (pct > 0 ? 'bad' : 'ok') + '">' + (pct > 0 ? '+' : '') + pct + '%</div>';
+    box.appendChild(row);
+  });
+}
+$('wDate').value = todayStr();
+$('watchAdd').onclick = function(){
+  var name = $('wName').value.trim(), price = Number($('wPrice').value);
+  if (!name || !price){ toast('填商品名和价格'); return; }
+  state.watch = watchAdd(state.watch, { name: name, platform: $('wPlat').value.trim(),
+    price: price, date: $('wDate').value });
+  save(WATCH_KEY, state.watch);
+  $('wName').value = ''; $('wPrice').value = '';
+  renderWatch();
+  toast('已记录价格');
+};
+$('watchExport').onclick = function(){
+  if (!state.watch.length){ toast('还没有观察数据'); return; }
+  var lines = [WATCH_HEADER];
+  state.watch.forEach(function(e){ lines.push([e.date, e.name, e.platform, e.price].map(csvEsc).join(',')); });
+  download('价格观察_' + todayStr().replace(/-/g, '') + '.csv', lines.join('\r\n') + '\r\n');
+  toast('已导出');
+};
+
+// ══════════ 知识页 ══════════
+var DOCS = [
+  '<h3>一、渠道怎么选</h3>' +
+  '<table><tr><th>渠道</th><th>适合</th><th>起订</th><th>风险</th></tr>' +
+  '<tr><td>1688</td><td>全品类批发</td><td>几件起</td><td>质量参差</td></tr>' +
+  '<tr><td>拼多多百亿补贴</td><td>纸品/洗护/小家电</td><td>1 件</td><td>认准官方</td></tr>' +
+  '<tr><td>社区团购</td><td>食品/日化</td><td>1 件</td><td>次日自提无运费</td></tr>' +
+  '<tr><td>临期仓</td><td>食品/洗护</td><td>整箱</td><td>保质期压力</td></tr>' +
+  '<tr><td>本地批发市场</td><td>小商品/日化</td><td>可少量</td><td>要现场挑</td></tr></table>' +
+  '<h3>二、什么时候买</h3>' +
+  '<p>大促（618/双11）最低但竞争激烈；<b>季末清仓（3/6/9/12 月底）竞争小</b>，新手更适合。</p>' +
+  '<h3>三、优惠叠加顺序</h3>' +
+  '<p>历史价确认 → 平台券 → 店铺券 → 跨店满减 → 支付立减 → 返利。凑单只凑本来要买的。</p>',
+
+  '<h3>利润怎么算</h3>' +
+  '<p>总成本 = 进货价 × 数量 + 进货运费</p>' +
+  '<p>收入 = 售价 × 数量</p>' +
+  '<p>平台费 = 收入 × 费率</p>' +
+  '<p><b>利润 = 收入 − 平台费 − 总成本 − 出货运费</b></p>' +
+  '<p>利润率 = 利润 ÷ 收入</p>' +
+  '<p>年化 ≈ 利润率 × (365 ÷ 周转天数)</p>' +
+  '<h3>门槛线</h3>' +
+  '<p>利润率 ≥ 20% 可做；10–20% 谨慎；&lt; 10% 不做。单件利润低于 5 元也不做。</p>' +
+  '<h3>为什么运费是命门</h3>' +
+  '<p>纸品、洗衣液这类重物，运费常吃掉全部利润。轻小件（牙刷/垃圾袋/棉签）更适合快递转卖。</p>',
+
+  '<h3>全年促销节点</h3>' +
+  '<table><tr><th>月份</th><th>节点</th></tr>' +
+  '<tr><td>1 月</td><td>年货节、品牌清仓</td></tr>' +
+  '<tr><td>3 月</td><td>38 节</td></tr>' +
+  '<tr><td>5 月</td><td>520、劳动节</td></tr>' +
+  '<tr><td>6 月</td><td>618（重点）</td></tr>' +
+  '<tr><td>9 月</td><td>99 划算节</td></tr>' +
+  '<tr><td>11 月</td><td>双 11（力度最大）</td></tr>' +
+  '<tr><td>12 月</td><td>双 12、年货预售</td></tr></table>' +
+  '<h3>规律</h3><p>大促后一周常有尾货清仓；季末清仓没人抢，适合新手。</p>',
+
+  '<h3>绝对不碰</h3>' +
+  '<table><tr><th>做法</th><th>后果</th></tr>' +
+  '<tr><td>仅退款</td><td>涉嫌诈骗</td></tr>' +
+  '<tr><td>薅运费险</td><td>涉嫌诈骗</td></tr>' +
+  '<tr><td>刷单</td><td>违法 + 封号</td></tr>' +
+  '<tr><td>脚本抢购</td><td>封号，情节严重涉刑</td></tr>' +
+  '<tr><td>卖假货</td><td>刑事风险</td></tr>' +
+  '<tr><td>代收款走账</td><td>帮信罪</td></tr></table>' +
+  '<p><b>赚差价是生意，钻漏洞是犯罪。</b></p>'
+];
+function renderDoc(i){
+  $('docBody').innerHTML = DOCS[i] || '';
+  document.querySelectorAll('#docNav button').forEach(function(b){
+    b.classList.toggle('on', Number(b.getAttribute('data-d')) === i);
+  });
+}
+document.querySelectorAll('#docNav button').forEach(function(b){
+  b.onclick = function(){ renderDoc(Number(b.getAttribute('data-d'))); };
+});
+renderDoc(0);
+
+// ══════════ 自检页 ══════════
+var CHECKS = [
+  '进货渠道是官方促销/清仓/会员权益（不是脚本抢购）',
+  '商品是正品，有正规凭证（订单/发票）',
+  '单笔投入 ≤ 本金上限的 30%',
+  '最坏情况（卖不掉/破发）在可承受范围',
+  '售价减平台费和运费后，利润率为正',
+  '已确认平台规则允许转卖',
+  '不涉及仅退款、刷单、虚假交易',
+  '已记录到「记录」页'
+];
+function renderCheck(){
+  var saved = load(CHECK_KEY, {});
+  var box = $('checkList');
+  box.innerHTML = '';
+  var done = 0;
+  CHECKS.forEach(function(text, i){
+    var on = !!saved[i];
+    if (on) done++;
+    var row = document.createElement('label');
+    row.style.cssText = 'display:flex;gap:10px;align-items:flex-start;padding:9px 2px;border-bottom:1px solid #F1ECE3;font-size:13px';
+    row.innerHTML = '<input type="checkbox" data-i="' + i + '" ' + (on ? 'checked' : '') +
+      ' style="width:18px;height:18px;flex:none;margin-top:1px"> <span>' + text + '</span>';
+    box.appendChild(row);
+  });
+  $('checkTag').textContent = done + '/' + CHECKS.length;
+  box.querySelectorAll('input[type=checkbox]').forEach(function(cb){
+    cb.onchange = function(){
+      var s = load(CHECK_KEY, {});
+      s[cb.getAttribute('data-i')] = cb.checked;
+      save(CHECK_KEY, s);
+      renderCheck();
+    };
+  });
+}
+renderCheck();
+$('checkReset').onclick = function(){
+  save(CHECK_KEY, {});
+  renderCheck();
+  toast('已重置');
+};
+
+// ══════════ 初始化 ══════════
+state.records = load(REC_KEY, []);
+state.watch = load(WATCH_KEY, []);
+renderStats();
+renderRec();
+renderWatch();
+show('calc');
+</script>
+</body>
+</html>
