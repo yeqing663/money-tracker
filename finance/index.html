@@ -1160,12 +1160,12 @@ if (typeof module !== 'undefined' && module.exports){
   function isDemo(){ return localStorage.getItem(DEMO_KEY) === '1'; }
 
   /**
-   * 自动迁移：如果当前只有演示数据，而旧版「我的记录」里有真实账单，
+   * 自动迁移：如果当前只有演示数据（或完全为空），而旧版「我的记录」里有真实账单，
    * 就清空演示数据，只保留旧版记录（预算/目标一并清空）。
    */
   function autoMigrateFromLegacy(){
     if (localStorage.getItem('dsh_fin_migrated_v1') === '1') return false;
-    if (!isDemo()) return false;
+    if (!isDemo() && state.records.length > 0) return false;
     var legacy = null;
     try { legacy = JSON.parse(localStorage.getItem('dsh_ledger_v1') || 'null'); } catch (e){ legacy = null; }
     var mapped = recordsFromLegacy(legacy);
