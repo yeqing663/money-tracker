@@ -2183,10 +2183,26 @@ if (typeof module !== 'undefined' && module.exports){
   switchView('home');
   window.__life = { state: state, renderHome: renderHome, renderModules: renderModules, renderReview: renderReview, openPanel: openPanel };
 
-  // 注册 Service Worker（PWA 离线）
+  // 版本号展示（方便确认是否是新版）
+  var APP_VERSION = 'v1.3';
+  if (document.getElementById('appVer')){
+    document.getElementById('appVer').textContent = '当前版本 ' + APP_VERSION;
+  }
+
+  // 注册 Service Worker（PWA 离线 + 自动更新）
   if ('serviceWorker' in navigator){
     window.addEventListener('load', function(){
-      navigator.serviceWorker.register('sw.js').catch(function(){});
+      navigator.serviceWorker.register('sw.js').then(function(reg){
+        reg.addEventListener('updatefound', function(){
+          var nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', function(){
+            if (nw.state === 'installed' && navigator.serviceWorker.controller){
+              toast('已更新到新版本，刷新后生效');
+            }
+          });
+        });
+      }).catch(function(){});
     });
   }
 })();
