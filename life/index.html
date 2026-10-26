@@ -250,6 +250,14 @@
       <div class="grid3" id="review7Grid"></div>
     </section>
     <section class="card">
+      <div class="card-head"><h2>🏋️ 训练完成</h2><span class="tag" id="trainProgressTag"></span></div>
+      <div id="trainProgress"></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>⚖️ 体重趋势</h2><span class="tag">近 30 天</span></div>
+      <div id="weightTrend"></div>
+    </section>
+    <section class="card">
       <div class="card-head"><h2>🗓 记录热力图</h2><span class="tag">近 3 个月</span></div>
       <div class="heat" id="heatGrid"></div>
       <div class="legend"><span>少</span><i></i><i class="l2"></i><i class="l4"></i><span>多</span></div>
@@ -397,6 +405,7 @@ function defaultDoc(){
     work: [],          // { id, title, stage, next, updated }
     plan: null,        // 训练计划 { goal, days, place, weekly, ... }
     diet: null,        // 饮食计划 { goal, weight, kcal, ... }
+    sessions: [],      // 训练打卡 { id, date, focus, minutes, exercises, doneCount, totalCount }
   };
 }
 function normalizeDoc(raw){
@@ -405,7 +414,7 @@ function normalizeDoc(raw){
   ['health', 'habitLogs', 'todos'].forEach(function(k){
     if (raw[k] && typeof raw[k] === 'object' && !Array.isArray(raw[k])) d[k] = raw[k];
   });
-  ['workouts', 'journal', 'habits', 'books', 'items', 'work'].forEach(function(k){
+  ['workouts', 'journal', 'habits', 'books', 'items', 'work', 'sessions'].forEach(function(k){
     if (Array.isArray(raw[k])) d[k] = raw[k];
   });
   if (raw.profile && typeof raw.profile === 'object'){
@@ -853,6 +862,101 @@ function todayTraining(doc, date){
   return { rest: false, plan: plan, day: plan.weekly[pos] || null, diet: doc.diet || null };
 }
 
+// ══════════ 训练打卡（按计划执行）══════════
+/**
+ * 保存一次训练打卡
+ * @param data {date, focus, minutes, note, done:[{name, done, sets, reps}]}
+ */
+function saveSession(doc, data){
+  var date = (data && data.date) || todayStr();
+  var done = ((data && data.done) || []).map(function(x){
+    return { name: String(x.name || '').slice(0, 30), done: !!x.done,
+             sets: Math.max(0, Math.round(Number(x.sets) || 0)), reps: String(x.reps || '') };
+  });
+  var rec = {
+    id: uid(), date: date,
+    focus: String((data && data.focus) || '训练').slice(0, 20),
+    minutes: Math.max(0, Math.round(Number(data && data.minutes) || 0)),
+    exercises: done,
+    doneCount: done.filter(function(x){ return x.done; }).length,
+    totalCount: done.length,
+    note: String((data && data.note) || '').slice(0, 60),
+  };
+  doc.sessions = (doc.sessions || []).concat([rec]);
+  return rec;
+}
+function sessionsIn(doc, days, endDate){
+  var set = {};
+  lastNDates(days, endDate).forEach(function(d){ set[d] = 1; });
+  return (doc.sessions || []).filter(function(s){ return set[s.date]; })
+    .sort(function(a, b){ return a.date < b.date ? 1 : -1; });
+}
+function sessionOf(doc, date){
+  date = date || todayStr();
+  return (doc.sessions || []).filter(function(s){ return s.date === date; })[0] || null;
+}
+/** 本周计划完成情况（没有计划返回 null） */
+function weekPlanProgress(doc, endDate){
+  var plan = doc.plan;
+  if (!plan || !plan.weekly || !plan.weekly.length) return null;
+  var dates = lastNDates(7, endDate);
+  var map = DAY_MAP[plan.days] || DAY_MAP[3];
+  var plannedDates = dates.filter(function(d){ return map.indexOf(weekdayIndex(d)) >= 0; });
+  var doneDates = dates.filter(function(d){
+    return (doc.sessions || []).some(function(s){ return s.date === d; });
+  });
+  var exDone = 0, exPlanned = 0;
+  (doc.sessions || []).forEach(function(s){
+    if (dates.indexOf(s.date) < 0) return;
+    exDone += s.doneCount || 0;
+    exPlanned += s.totalCount || 0;
+  });
+  return {
+    planned: plannedDates.length,
+    done: doneDates.length,
+    rate: plannedDates.length ? Math.round(doneDates.length / plannedDates.length * 100) : 0,
+    exerciseDone: exDone, exercisePlanned: exPlanned,
+    exerciseRate: exPlanned ? Math.round(exDone / exPlanned * 100) : 0,
+  };
+}
+/** 连续打卡天数 */
+function sessionStreak(doc, endDate){
+  var d = endDate || todayStr(), n = 0;
+  function has(day){ return (doc.sessions || []).some(function(s){ return s.date === day; }); }
+  if (!has(d)) d = addDays(d, -1);
+  while (has(d) && n < 3650){ n++; d = addDays(d, -1); }
+  return n;
+}
+
+// ══════════ 体重曲线 ══════════
+function weightSeries(doc, days, endDate){
+  return lastNDates(days || 30, endDate).map(function(d){
+    return { date: d, weight: getHealth(doc, d).weight };
+  }).filter(function(x){ return x.weight !== null && x.weight !== undefined; });
+}
+function weightChange(doc, days, endDate){
+  var s = weightSeries(doc, days, endDate);
+  if (s.length < 2) return null;
+  return round1(s[s.length - 1].weight - s[0].weight);
+}
+function weightAvg(doc, days, endDate){
+  var s = weightSeries(doc, days, endDate);
+  if (!s.length) return null;
+  return round1(s.reduce(function(a, x){ return a + x.weight; }, 0) / s.length);
+}
+function weightAdvice(doc, days, endDate){
+  var d = days || 30;
+  var ch = weightChange(doc, d, endDate);
+  var goal = doc.diet ? doc.diet.goal : null;
+  if (ch === null) return { change: null, goal: goal, text: '记录两次以上体重就能看到变化。' };
+  if (!goal) return { change: ch, goal: null, text: '近 ' + d + ' 天变化 ' + (ch > 0 ? '+' : '') + ch + ' kg。' };
+  var text;
+  if (goal === '减脂') text = ch < 0 ? '在下降，节奏不错（近 ' + d + ' 天 ' + ch + ' kg）。' : '没有下降，先检查饮食记录是否如实。';
+  else if (goal === '增肌') text = ch > 0 ? '在增长（近 ' + d + ' 天 +' + ch + ' kg），注意别涨太快。' : '没有增长，可以每天多吃 200–300 kcal。';
+  else text = Math.abs(ch) <= 1.5 ? '基本稳定，符合维持目标。' : '波动较大，先固定吃饭和称重时间。';
+  return { change: ch, goal: goal, text: text };
+}
+
 // ══════════ 回顾 ══════════
 /** 近 N 天每日汇总（用于趋势与日历） */
 function reviewRange(doc, finRecords, days, endDate){
@@ -955,6 +1059,8 @@ if (typeof module !== 'undefined' && module.exports){
     WORK_STAGES, addWork, updateWork, workByStage,
     TRAIN_GOALS, TRAIN_PLACES, GOAL_SPEC, EX_LIB, DAY_MAP,
     splitFor, trainPlan, dietPlan, planToText, todayTraining, weekdayIndex,
+    saveSession, sessionsIn, sessionOf, weekPlanProgress, sessionStreak,
+    weightSeries, weightChange, weightAvg, weightAdvice,
     reviewRange, recordStreak, monthStats, buildBackup, parseBackup,
   };
 }
@@ -1034,6 +1140,32 @@ if (typeof module !== 'undefined' && module.exports){
     ta.select();
     try { document.execCommand('copy'); toast('已复制'); } catch (e){ toast('复制失败，请手动选择'); }
     ta.remove();
+  }
+
+  function weightChartHtml(series){
+    if (!series || series.length < 2){
+      return '<div class="empty">记录两次以上体重就能看到曲线。</div>';
+    }
+    var w = 320, h = 84, pad = 8;
+    var vals = series.map(function(s){ return s.weight; });
+    var min = Math.min.apply(null, vals) - 0.5;
+    var max = Math.max.apply(null, vals) + 0.5;
+    var span = Math.max(0.5, max - min);
+    var pts = series.map(function(s, i){
+      var x = pad + (w - pad * 2) * (i / (series.length - 1));
+      var y = h - pad - (h - pad * 2) * ((s.weight - min) / span);
+      return Math.round(x * 10) / 10 + ',' + Math.round(y * 10) / 10;
+    });
+    var circles = series.map(function(s, i){
+      var p = pts[i].split(',');
+      return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="2.6" fill="var(--primary)"/>';
+    }).join('');
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:88px;display:block">' +
+      '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--primary)" stroke-width="2" ' +
+      'stroke-linejoin="round" stroke-linecap="round"/>' + circles + '</svg>' +
+      '<div class="row" style="justify-content:space-between;font-size:11px;color:var(--sub);margin-top:2px">' +
+      '<span>' + series[0].date.slice(5) + ' · ' + series[0].weight + 'kg</span>' +
+      '<span>' + series[series.length - 1].date.slice(5) + ' · ' + series[series.length - 1].weight + 'kg</span></div>';
   }
 
   // ══════════ 存储 ══════════
@@ -1141,17 +1273,23 @@ if (typeof module !== 'undefined' && module.exports){
       tr.innerHTML = '<div class="empty">今天休息日 · 散步或拉伸 20 分钟</div>' +
         '<p class="hint">当前计划：' + tt.plan.goal + ' · ' + tt.plan.days + ' 天/周 · ' + tt.plan.place + '</p>';
     } else {
+      var todayS = sessionOf(state.doc);
       tr.innerHTML = '<div class="row" style="justify-content:space-between;margin-bottom:4px">' +
         '<b style="font-size:14px">' + tt.day.focus + '</b>' +
-        '<span class="tag">' + tt.plan.goal + ' · ' + tt.plan.days + ' 天/周</span></div>' +
+        '<span class="tag' + (todayS ? ' good' : '') + '">' +
+        (todayS ? '✓ 已打卡' : tt.plan.goal + ' · ' + tt.plan.days + ' 天/周') + '</span></div>' +
         tt.day.exercises.map(function(e){
           return '<div class="list-item"><span class="ic">🏋️</span><span class="mid">' +
             '<span class="t1">' + esc(e.name) + '</span><span class="t2">' + e.sets + ' 组 × ' +
             e.reps + ' · 休息 ' + e.rest + ' 秒</span></span></div>';
         }).join('') +
-        '<p class="hint">有氧：' + tt.day.cardioNote + ' ' + tt.day.cardio + ' 分钟</p>';
+        '<p class="hint">有氧：' + tt.day.cardioNote + ' ' + tt.day.cardio + ' 分钟</p>' +
+        '<button class="btn ghost small" id="homeTrainGo" style="margin-top:8px">' +
+        (todayS ? '今天的打卡：动作 ' + todayS.doneCount + '/' + todayS.totalCount + ' · ' + todayS.minutes + ' 分钟' : '去打卡') +
+        '</button>';
     }
     $('homeTrainingMore').onclick = function(){ openPanel('workout', { wTab: 'plan' }); };
+    if ($('homeTrainGo')) $('homeTrainGo').onclick = function(){ openPanel('workout', { wTab: 'plan' }); };
 
     // 今日饮食
     var diet = state.doc.diet;
@@ -1277,6 +1415,35 @@ if (typeof module !== 'undefined' && module.exports){
         '<span style="color:var(--sub);font-size:13px">' + r[0] + '</span>' +
         '<b style="font-size:14px">' + r[1] + '</b></div>';
     }).join('');
+
+    // 训练计划完成
+    var pp = weekPlanProgress(state.doc);
+    if (!pp){
+      $('trainProgressTag').textContent = '无计划';
+      $('trainProgress').innerHTML = '<div class="empty"><span class="big">🏋️</span>还没有训练计划。去「记录 → 运动健身 → 计划」生成一份。</div>';
+    } else {
+      $('trainProgressTag').textContent = '本周 ' + pp.done + '/' + pp.planned + ' 次';
+      $('trainProgress').innerHTML =
+        '<div class="grid2" style="margin-bottom:8px">' +
+        '<div class="stat"><div class="k">计划完成率</div><div class="v small">' + pp.rate + '%</div></div>' +
+        '<div class="stat"><div class="k">动作完成率</div><div class="v small">' + pp.exerciseRate + '%</div></div>' +
+        '</div>' +
+        '<div class="bar"><i class="good" style="width:' + pp.rate + '%"></i></div>' +
+        '<p class="hint">本周计划 ' + pp.planned + ' 次，已打卡 ' + pp.done + ' 次 · 动作完成 ' +
+        pp.exerciseDone + '/' + pp.exercisePlanned + ' · 连续打卡 ' + sessionStreak(state.doc) + ' 天</p>';
+    }
+
+    // 体重趋势
+    var ws = weightSeries(state.doc, 30);
+    var wa = weightAdvice(state.doc, 30);
+    $('weightTrend').innerHTML = weightChartHtml(ws) +
+      (ws.length >= 2 ? '<div class="grid3" style="margin-top:8px">' +
+        '<div class="stat"><div class="k">变化</div><div class="v small">' +
+        (wa.change > 0 ? '+' : '') + wa.change + 'kg</div></div>' +
+        '<div class="stat"><div class="k">平均</div><div class="v small">' + weightAvg(state.doc, 30) + 'kg</div></div>' +
+        '<div class="stat"><div class="k">记录</div><div class="v small">' + ws.length + ' 次</div></div>' +
+        '</div>' : '') +
+      '<p class="hint">' + esc(wa.text) + '</p>';
 
     // 支出趋势
     var trend = reviewRange(state.doc, state.fin, 14);
@@ -1410,6 +1577,7 @@ if (typeof module !== 'undefined' && module.exports){
       '<div><label style="font-size:12px;color:var(--sub)">体重(kg)</label>' +
       '<input class="input" id="pWeight" type="number" step="0.1" placeholder="60" value="' + (h.weight === null ? '' : h.weight) + '"></div>' +
       '</div><button class="btn primary" id="pHSave" style="margin-top:12px">保存</button></div>' +
+      '<div class="card"><div class="card-head"><h2>体重趋势（近 30 天）</h2></div><div id="pWeightTrend"></div></div>' +
       '<div class="card"><div class="card-head"><h2>最近 14 天</h2></div><div id="pHealthList"></div></div>';
     $('pHSave').onclick = function(){
       setHealth(state.doc, t, {
@@ -1426,6 +1594,9 @@ if (typeof module !== 'undefined' && module.exports){
       return '<div class="list-item"><span class="ic">🌙</span><span class="mid">' +
         '<span class="t1">' + dayLabel(r.date) + '</span><span class="t2">' + (parts.join(' · ') || '未记录') + '</span></span></div>';
     }).join('');
+    var ws = weightSeries(state.doc, 30);
+    var wa = weightAdvice(state.doc, 30);
+    $('pWeightTrend').innerHTML = weightChartHtml(ws) + '<p class="hint">' + esc(wa.text) + '</p>';
   };
 
   PANELS.workout = function(body){
@@ -1449,7 +1620,9 @@ if (typeof module !== 'undefined' && module.exports){
         '<div><label style="font-size:12px;color:var(--sub)">备注</label>' +
         '<input class="input" id="pWNote" maxlength="40" placeholder="选填"></div></div>' +
         '<button class="btn primary" id="pWSave" style="margin-top:12px">记录这次运动</button></div>' +
-        '<div class="card"><div class="card-head"><h2>最近 7 天</h2></div><div id="pWList"></div></div>';
+        '<div class="card"><div class="card-head"><h2>训练打卡</h2><span class="tag">近 7 天 ' +
+        sessionsIn(state.doc, 7).length + ' 次</span></div><div id="pSessList"></div></div>' +
+        '<div class="card"><div class="card-head"><h2>最近 7 天运动</h2></div><div id="pWList"></div></div>';
     } else {
       var cur = state.doc.plan;
       var pv = state.panelOpts.preview;
@@ -1476,6 +1649,29 @@ if (typeof module !== 'undefined' && module.exports){
         html += '<div class="row" style="gap:8px;margin-top:10px">' +
           '<button class="btn ghost small" id="pWCopy">复制计划</button>' +
           '<button class="btn ghost small" id="pWDel">删除计划</button></div></div>';
+
+        var todayS = sessionOf(state.doc);
+        if (tt && !tt.rest && tt.day){
+          if (todayS){
+            html += '<div class="card"><div class="card-head"><h2>今天的打卡</h2>' +
+              '<span class="tag good">✓ 已完成</span></div>' +
+              '<div class="list-item"><span class="ic">✅</span><span class="mid">' +
+              '<span class="t1">' + esc(todayS.focus) + '</span><span class="t2">动作 ' +
+              todayS.doneCount + '/' + todayS.totalCount + ' · ' + todayS.minutes + ' 分钟</span></span></div></div>';
+          } else {
+            html += '<div class="card"><div class="card-head"><h2>今天打卡</h2>' +
+              '<span class="tag">' + tt.day.focus + ' · 勾选完成的动作</span></div>';
+            tt.day.exercises.forEach(function(e, i){
+              var on = state.panelOpts.sessDone && state.panelOpts.sessDone[i];
+              html += '<div class="list-item"><button class="check' + (on ? ' on' : '') + '" data-ex="' + i + '">' +
+                (on ? '✓' : '') + '</button><span class="mid"><span class="t1">' + esc(e.name) +
+                '</span><span class="t2">' + e.sets + ' 组 × ' + e.reps + '</span></span></div>';
+            });
+            html += '<div class="row" style="margin-top:10px;gap:8px">' +
+              '<input class="input" id="pSessMin" type="number" placeholder="时长(分钟)" style="flex:1">' +
+              '<button class="btn primary small" id="pSessSave" style="flex:none">完成打卡</button></div></div>';
+          }
+        }
       }
 
       html += '<div class="card"><div class="card-head"><h2>' + (cur ? '重新生成计划' : '生成计划') + '</h2></div>' +
@@ -1553,6 +1749,14 @@ if (typeof module !== 'undefined' && module.exports){
           '<span class="t1">' + esc(w.type) + ' · ' + w.minutes + ' 分钟</span><span class="t2">' +
           dayLabel(w.date) + (w.note ? ' · ' + esc(w.note) : '') + '</span></span></div>';
       }).join('') : '<div class="empty">本周还没有运动记录。</div>';
+      var sess = sessionsIn(state.doc, 7);
+      $('pSessList').innerHTML = sess.length ? sess.map(function(s){
+        var pct = s.totalCount ? Math.round(s.doneCount / s.totalCount * 100) : 0;
+        return '<div class="list-item"><span class="ic">✅</span><span class="mid">' +
+          '<span class="t1">' + esc(s.focus) + ' · ' + s.doneCount + '/' + s.totalCount + ' 动作</span>' +
+          '<span class="t2">' + dayLabel(s.date) + ' · ' + s.minutes + ' 分钟</span>' +
+          '<div class="bar"><i class="good" style="width:' + pct + '%"></i></div></span></div>';
+      }).join('') : '<div class="empty">还没有打卡。切到「计划」页勾选今天完成的动作。</div>';
       return;
     }
 
@@ -1601,6 +1805,30 @@ if (typeof module !== 'undefined' && module.exports){
           state.doc.plan = null; state.doc.diet = null;
           saveDoc(); renderPanel(); toast('已删除计划');
         });
+      };
+    }
+    body.querySelectorAll('[data-ex]').forEach(function(b){
+      b.onclick = function(){
+        state.panelOpts.sessDone = state.panelOpts.sessDone || {};
+        var i = b.getAttribute('data-ex');
+        state.panelOpts.sessDone[i] = !state.panelOpts.sessDone[i];
+        renderPanel();
+      };
+    });
+    if ($('pSessSave')){
+      $('pSessSave').onclick = function(){
+        var tt2 = todayTraining(state.doc);
+        if (!tt2 || !tt2.day) return;
+        var done = tt2.day.exercises.map(function(e, i){
+          return { name: e.name, done: !!(state.panelOpts.sessDone && state.panelOpts.sessDone[i]),
+                   sets: e.sets, reps: e.reps };
+        });
+        if (!done.some(function(x){ return x.done; })){ toast('至少勾选一个完成的动作'); return; }
+        var mins = Number($('pSessMin').value) || (tt2.day.cardio + 30);
+        saveSession(state.doc, { focus: tt2.day.focus, minutes: mins, done: done });
+        addWorkout(state.doc, '力量', mins, tt2.day.focus);
+        state.panelOpts.sessDone = {};
+        saveDoc(); renderPanel(); toast('已打卡 ✓');
       };
     }
   };
