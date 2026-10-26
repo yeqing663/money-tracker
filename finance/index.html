@@ -320,6 +320,7 @@
       <button class="btn ghost" id="exportCsv">导出账单 CSV</button>
       <button class="btn ghost" id="exportJson">导出全部数据 JSON</button>
       <button class="btn ghost" id="importCsv">导入账单 CSV</button>
+      <button class="btn ghost" id="batchImport">批量导入（微信 / 支付宝账单）</button>
       <input type="file" id="importFile" accept=".csv,text/csv" hidden>
       <p class="hint">导入支持本应用导出的 CSV，也兼容旧版「我的记录」导出格式（日期,类型,分类,金额,支付方式,备注）。重复记录会自动跳过。</p>
       <button class="btn ghost" id="restoreDemo">恢复演示数据</button>
@@ -406,6 +407,25 @@
     <label>存入金额</label><input id="depositAmount" type="number" inputmode="decimal" placeholder="500">
     <div class="err" id="dErr"></div>
     <button class="btn primary" id="confirmDeposit">确认存入</button>
+  </div>
+</div>
+
+<!-- 批量导入 -->
+<div class="overlay" id="batchOverlay" hidden>
+  <div class="sheet" role="dialog" aria-label="批量导入">
+    <div class="sheet-head"><h3>批量导入账单</h3><button class="close" id="batchClose">✕</button></div>
+    <p class="hint" style="margin-top:0">
+      <b>① 微信</b>：我 → 服务 → 钱包 → 账单 → 常见问题 → 下载账单 → 用于个人对账 → 解压得到 CSV<br>
+      <b>② 支付宝</b>：我的 → 账单 → 右上角 ⋯ → 开具交易流水证明 → 用于个人对账 → 解压得到 CSV<br>
+      <b>③ 懒人版</b>：把账单明细文字复制成多行，直接粘到下面也行。
+    </p>
+    <label>粘贴账单内容（CSV 文本或多行明细）</label>
+    <textarea id="batchText" rows="6" placeholder="交易时间,交易类型,交易对方,商品,收/支,金额(元),支付方式,当前状态…
+2026-10-24 12:30:00,商户消费,美团外卖,午餐,支出,¥25.00,零钱,支付成功"></textarea>
+    <div class="err" id="batchErr"></div>
+    <button class="btn ghost" id="batchFileBtn">选择 CSV 文件（自动识别 GBK）</button>
+    <input type="file" id="batchFile" accept=".csv,text/csv" hidden>
+    <button class="btn primary" id="batchParseBtn">识别并导入</button>
   </div>
 </div>
 
@@ -687,13 +707,39 @@ function parseCsvRows(text){
 }
 
 var HEADER_MAP = {
-  '日期': 'date', 'date': 'date', '时间': 'date',
-  '类型': 'type', 'type': 'type', '收支': 'type',
-  '类别': 'category', '分类': 'category', 'category': 'category',
+  '日期': 'date', 'date': 'date', '时间': 'date', '交易时间': 'date',
+  '类型': 'type', 'type': 'type', '收支': 'type', '收/支': 'type', '收／支': 'type',
+  '类别': 'category', '分类': 'category', 'category': 'category', '交易分类': 'category',
   '金额': 'amount', 'amount': 'amount', '金额(元)': 'amount', '金额（元）': 'amount',
-  '账户': 'account', 'account': 'account', '支付方式': 'account',
+  '账户': 'account', 'account': 'account', '支付方式': 'paymethod', '收/付款方式': 'paymethod',
   '备注': 'note', 'note': 'note', 'memo': 'note', '说明': 'note',
+  '交易对方': 'merchant', '商品': 'goods', '商品说明': 'goods',
+  '交易状态': 'status', '当前状态': 'status',
 };
+
+function mapAccount(raw, platform){
+  var s = String(raw || '');
+  if (/零钱|微信/.test(s)) return '微信';
+  if (/支付宝|余额宝|花呗/.test(s)) return '支付宝';
+  if (/银行|储蓄卡|信用卡|借记卡/.test(s)) return '银行卡';
+  if (s.trim()) return s.trim().slice(0, 12);
+  return platform || '现金';
+}
+function mapCategory(raw, text){
+  var s = String(raw || '');
+  if (s){
+    if (/餐饮|美食/.test(s)) return '餐饮';
+    if (/交通|出行/.test(s)) return '交通';
+    if (/购物|日用|电商|百货/.test(s)) return '购物';
+    if (/住房|居家|房租|水电|物业/.test(s)) return '住房';
+    if (/娱乐|休闲|文化/.test(s)) return '娱乐';
+    if (/通讯|话费|流量/.test(s)) return '通讯';
+    if (/医疗|医药/.test(s)) return '医疗';
+    if (/教育|学习|培训/.test(s)) return '学习';
+    if (/转账|红包|人情/.test(s)) return '其他支出';
+  }
+  return payCategory(text, false);
+}
 
 function normalizeDate(s){
   s = String(s || '').trim().replace(/[./]/g, '-');
@@ -709,18 +755,20 @@ function normalizeAmount(s){
 }
 
 /**
- * 解析账单 CSV（兼容本应用与旧「综合 App」两种表头）
- * @returns {{records:Array, skipped:number, total:number, headerFound:boolean}}
+ * 解析账单 CSV
+ * 支持：本应用导出 / 旧「我的记录」/ 微信支付账单 / 支付宝账单
+ * @returns {{records:Array, skipped:number, total:number, headerFound:boolean, platform:string}}
  */
 function parseRecordsCsv(text){
   var rows = parseCsvRows(text);
-  if (!rows.length) return { records: [], skipped: 0, total: 0, headerFound: false };
+  if (!rows.length) return { records: [], skipped: 0, total: 0, headerFound: false, platform: '' };
 
-  var headerIdx = -1, cols = {};
-  for (var i = 0; i < Math.min(rows.length, 3); i++){
-    var cells = rows[i].map(function(c){ return String(c).trim().toLowerCase(); });
-    if (cells.indexOf('日期') >= 0 || cells.indexOf('date') >= 0){
+  var headerIdx = -1, cols = {}, platform = '', headerCells = [];
+  for (var i = 0; i < Math.min(rows.length, 30); i++){
+    var cells = rows[i].map(function(c){ return String(c).trim().replace(/\s+/g, '').toLowerCase(); });
+    if (cells.indexOf('日期') >= 0 || cells.indexOf('date') >= 0 || cells.indexOf('交易时间') >= 0){
       headerIdx = i;
+      headerCells = cells;
       cells.forEach(function(c, j){
         var k = HEADER_MAP[c];
         if (k && cols[k] === undefined) cols[k] = j;
@@ -728,28 +776,75 @@ function parseRecordsCsv(text){
       break;
     }
   }
+  if (headerCells.indexOf('商户单号') >= 0 || headerCells.indexOf('当前状态') >= 0) platform = '微信';
+  else if (headerCells.indexOf('交易订单号') >= 0 || headerCells.indexOf('商家订单号') >= 0) platform = '支付宝';
+
   var dataRows = headerIdx >= 0 ? rows.slice(headerIdx + 1) : rows;
-  if (headerIdx < 0) cols = { date: 0, type: 1, category: 2, amount: 3, account: 4, note: 5 };
+  if (headerIdx < 0) cols = { date: 0, type: 1, category: 2, amount: 3, paymethod: 4, note: 5 };
 
   var out = [], skipped = 0;
   dataRows.forEach(function(row){
     if (!row || !row.length) return;
+    var firstCell = String(row[0] || '').trim();
+    // 跳过分隔线、说明行
+    if (!firstCell || /^-+$/.test(firstCell) || /^(微信支付账单|支付宝|导出时间)/.test(firstCell)){ return; }
+
     var date = normalizeDate(row[cols.date]);
-    var type = String(row[cols.type] == null ? '' : row[cols.type]).trim();
-    if (type === 'income' || type === '收入') type = '收入';
-    else if (type === 'expense' || type === '支出') type = '支出';
+    var rawType = String(row[cols.type] == null ? '' : row[cols.type]).trim().toLowerCase();
+    var type = '';
+    if (rawType === '收入' || rawType === 'income' || rawType === '收') type = '收入';
+    else if (rawType === '支出' || rawType === 'expense' || rawType === '支') type = '支出';
     else { skipped++; return; }
+
     var amount = normalizeAmount(row[cols.amount]);
     if (!isFinite(amount) || amount <= 0){ skipped++; return; }
     if (!date) date = todayStr();
-    var category = String(row[cols.category] == null ? '' : row[cols.category]).trim() ||
-      (type === '收入' ? '其他收入' : '其他支出');
-    var account = String(cols.account != null && row[cols.account] != null ? row[cols.account] : '').trim() || '现金';
-    var note = String(cols.note != null && row[cols.note] != null ? row[cols.note] : '').trim();
+
+    var merchant = cols.merchant != null && row[cols.merchant] != null ? String(row[cols.merchant]).trim() : '';
+    var goods = cols.goods != null && row[cols.goods] != null ? String(row[cols.goods]).trim() : '';
+    var payRaw = '';
+    if (cols.paymethod != null && row[cols.paymethod] != null) payRaw = String(row[cols.paymethod]).trim();
+    else if (cols.account != null && row[cols.account] != null) payRaw = String(row[cols.account]).trim();
+    var rawCat = cols.category != null && row[cols.category] != null ? String(row[cols.category]).trim() : '';
+    var rawNote = cols.note != null && row[cols.note] != null ? String(row[cols.note]).trim() : '';
+
+    var text = [merchant, goods, rawNote].filter(Boolean).join(' ');
+    var catText = rawCat + ' ' + text;
+    var category;
+    if (type === '收入'){
+      if (/工资|薪资/.test(catText)) category = '工资';
+      else if (/兼职|稿费|外快/.test(catText)) category = '兼职';
+      else if (/红包/.test(catText)) category = '红包';
+      else category = '其他收入';
+    } else {
+      category = mapCategory(rawCat, text);
+    }
+
+    var account = mapAccount(payRaw, platform);
+    var note = [merchant, goods].filter(Boolean).join(' · ') || rawNote;
     out.push({ id: uid(), date: date, type: type, category: category,
-               amount: amount, account: account, note: note });
+               amount: amount, account: account, note: note.slice(0, 40) });
   });
-  return { records: out, skipped: skipped, total: dataRows.length, headerFound: headerIdx >= 0 };
+  return { records: out, skipped: skipped, total: dataRows.length,
+           headerFound: headerIdx >= 0, platform: platform };
+}
+
+/**
+ * 批量解析多行文本（每行一条支付记录）
+ * 适合从账单明细复制成多行文本后粘贴
+ */
+function parsePayLines(text){
+  var lines = String(text || '').split(/\r?\n/);
+  var out = [];
+  lines.forEach(function(line){
+    var t = line.trim();
+    if (!t || t.length < 4) return;
+    if (/^(交易时间|日期|序号|微信支付账单|支付宝|导出时间)/.test(t) && !/[¥￥]\s*\d/.test(t)) return;
+    if (/^-+$/.test(t)) return;
+    var r = parsePayText(t);
+    if (r) out.push(r);
+  });
+  return out;
 }
 
 /** 合并导入记录（按 日期+类型+类别+金额+备注 去重） */
@@ -783,7 +878,8 @@ var PAY_INC = ['收款', '收入', '入账', '退款', '转入', '到账', '返�
 function payAmount(text){
   var pats = [/[¥￥]\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})|\d+(?:\.\d{1,2})?)/,
               /人民币\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})|\d+(?:\.\d{1,2})?)/,
-              /(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})|\d+(?:\.\d{1,2})?)\s*元/];
+              /(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})|\d+(?:\.\d{1,2})?)\s*元/,
+              /(?:^|\s)(\d{1,3}(?:,\d{3})*\.\d{2})\s*$/];   // 行尾金额，如「美团外卖 12.00」
   for (var i = 0; i < pats.length; i++){
     var m = text.match(pats[i]);
     if (m) return parseFloat(m[1].replace(/,/g, ''));
@@ -896,7 +992,8 @@ if (typeof module !== 'undefined' && module.exports){
     summarize, categoryBreakdown, budgetUsage, monthTrend, monthCompare, filterRecords,
     groupByDate, validateRecord, goalProgress, recordsToCsv, buildDemoData,
     defaultBudget, defaultGoals, monthLabel, dayLabel, weekdayCn, uid,
-    parseCsvRows, parseRecordsCsv, mergeRecords, parsePayText,
+    parseCsvRows, parseRecordsCsv, mergeRecords, parsePayText, parsePayLines,
+    normalizeDate, normalizeAmount,
   };
 }
 </script>
@@ -952,6 +1049,44 @@ if (typeof module !== 'undefined' && module.exports){
     document.body.appendChild(a);
     a.click();
     setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 800);
+  }
+
+  // ══════════ 导入工具（含 GBK 解码）══════════
+  function decodeBytes(buf){
+    var u8 = new Uint8Array(buf), utf8 = '';
+    try { utf8 = new TextDecoder('utf-8', { fatal: false }).decode(u8); } catch (e){ utf8 = ''; }
+    if (utf8 && utf8.indexOf('\uFFFD') === -1) return utf8;
+    try { return new TextDecoder('gbk').decode(u8); } catch (e){ return utf8; }
+  }
+  function detectAndParse(text){
+    var s = String(text || '').trim();
+    if (!s) return { records: [], skipped: 0, platform: '' };
+    var head = s.slice(0, 800);
+    var looksCsv = /交易时间|交易对方|收\/支|日期|date/i.test(head) || s.indexOf(',') >= 0;
+    if (looksCsv){
+      var r = parseRecordsCsv(s);
+      if (r.records.length) return r;
+    }
+    return { records: parsePayLines(s), skipped: 0, platform: '文本' };
+  }
+  function doImport(parsed, after){
+    if (!parsed.records.length){ toast('没识别出记录，检查一下格式'); return; }
+    confirmDialog('确认导入', '识别到 ' + parsed.records.length + ' 条记录' +
+      (parsed.skipped ? '，跳过 ' + parsed.skipped + ' 条无效' : '') +
+      (parsed.platform ? '\n来源：' + parsed.platform : '') + '。确定导入？', function(){
+      var m = mergeRecords(state.records, parsed.records);
+      state.records = m.merged;
+      parsed.records.forEach(function(r){
+        if (state.settings.accounts.indexOf(r.account) < 0) state.settings.accounts.push(r.account);
+        var list = state.settings.cats[r.type];
+        if (list && list.indexOf(r.category) < 0) list.push(r.category);
+      });
+      persist();
+      renderAll();
+      toast('导入完成：新增 ' + m.added + ' 条' +
+        (m.duplicated ? '，跳过重复 ' + m.duplicated + ' 条' : ''));
+      if (after) after();
+    });
   }
 
   // ══════════ 数据加载 ══════════
@@ -1621,26 +1756,44 @@ if (typeof module !== 'undefined' && module.exports){
     if (!f) return;
     var rd = new FileReader();
     rd.onload = function(){
-      var parsed = parseRecordsCsv(rd.result);
+      var text = decodeBytes(rd.result);
       ev.target.value = '';
-      if (!parsed.records.length){ toast('没有读取到有效记录（检查表头是否为 日期,类型,类别,金额…）'); return; }
-      confirmDialog('导入账单',
-        '读取到 ' + parsed.records.length + ' 条记录' +
-        (parsed.skipped ? '，另有 ' + parsed.skipped + ' 条无效已跳过' : '') + '。确定导入？', function(){
-        var m = mergeRecords(state.records, parsed.records);
-        state.records = m.merged;
-        parsed.records.forEach(function(r){
-          if (state.settings.accounts.indexOf(r.account) < 0) state.settings.accounts.push(r.account);
-          var list = state.settings.cats[r.type];
-          if (list && list.indexOf(r.category) < 0) list.push(r.category);
-        });
-        persist();
-        renderAll();
-        toast('导入完成：新增 ' + m.added + ' 条' +
-          (m.duplicated ? '，跳过重复 ' + m.duplicated + ' 条' : ''));
-      });
+      doImport(detectAndParse(text));
     };
-    rd.readAsText(f, 'UTF-8');
+    rd.readAsArrayBuffer(f);
+  };
+  // 批量导入（微信/支付宝账单）
+  $('batchImport').onclick = function(){
+    $('batchText').value = '';
+    $('batchErr').textContent = '';
+    $('batchOverlay').hidden = false;
+  };
+  $('batchClose').onclick = function(){ $('batchOverlay').hidden = true; };
+  $('batchOverlay').addEventListener('click', function(e){
+    if (e.target === $('batchOverlay')) $('batchOverlay').hidden = true;
+  });
+  $('batchFileBtn').onclick = function(){ $('batchFile').click(); };
+  $('batchFile').onchange = function(ev){
+    var f = ev.target.files && ev.target.files[0];
+    if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function(){
+      $('batchText').value = decodeBytes(rd.result).slice(0, 300000);
+      ev.target.value = '';
+      $('batchErr').textContent = '';
+      toast('已读入文件，点「识别并导入」');
+    };
+    rd.readAsArrayBuffer(f);
+  };
+  $('batchParseBtn').onclick = function(){
+    var parsed = detectAndParse($('batchText').value);
+    if (!parsed.records.length){
+      $('batchErr').textContent = '没识别出记录：确认内容里有金额，或表头包含「交易时间/日期」';
+      return;
+    }
+    $('batchErr').textContent = '';
+    $('batchOverlay').hidden = true;
+    doImport(parsed);
   };
   $('clearData').onclick = function(){
     confirmDialog('清空所有数据', '将删除全部记账、预算和目标，且无法恢复。确定继续？', function(){
@@ -1672,6 +1825,7 @@ if (typeof module !== 'undefined' && module.exports){
     if (!$('sheetOverlay').hidden) closeSheet();
     else if (!$('goalOverlay').hidden) $('goalClose').onclick();
     else if (!$('depositOverlay').hidden) $('depositClose').onclick();
+    else if (!$('batchOverlay').hidden) $('batchClose').onclick();
     else if (!$('confirmOverlay').hidden) closeConfirm();
   });
 
