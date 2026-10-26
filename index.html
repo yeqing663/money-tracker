@@ -226,10 +226,11 @@
   <div class="wrap">
     <div class="hero">
       <h1 id="mHeroTitle">本月</h1>
-      <div class="stats">
+      <div class="stats four">
         <div class="stat"><div class="k">支出</div><div class="v exp" id="mExp">¥0</div></div>
         <div class="stat"><div class="k">收入</div><div class="v inc" id="mInc">¥0</div></div>
         <div class="stat"><div class="k">结余</div><div class="v" id="mBal">¥0</div></div>
+        <div class="stat"><div class="k">储蓄率</div><div class="v" id="fRate">—</div></div>
       </div>
     </div>
     <div class="card paste-card">
@@ -260,6 +261,53 @@
     <div class="section-title"><span>最近记录</span><span id="mCount">0 笔</span></div>
     <div class="list" id="mList"></div>
   </div>
+
+
+    <div class="section-title" style="margin-top:22px"><span>财务分析</span><span>预算 · 资产 · 目标 · 体检</span></div>
+    <div class="card">
+      <h2>📊 分类预算 <span class="tag" id="fBudgetTag">本月</span></h2>
+      <div id="fBudgetList"></div>
+    </div>
+
+    <div class="card">
+      <h2>🏦 资产与负债 <span class="tag" id="fNetTag"></span></h2>
+      <div id="fAssetList"></div>
+      <div class="row" style="margin-top:10px">
+        <div><label>名称</label><input id="faName" placeholder="银行卡 / 花呗"></div>
+        <div><label>金额</label><input id="faAmt" type="number" inputmode="decimal" placeholder="0"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label>类型</label><select id="faKind"><option>资产</option><option>负债</option></select></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn-mini primary" id="faAdd">添加</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🎯 攒钱目标 <span class="tag" id="fGoalTag">0 个</span></h2>
+      <div id="fGoalList"></div>
+      <div class="row" style="margin-top:10px">
+        <div><label>目标名</label><input id="fgName" placeholder="应急金"></div>
+        <div><label>目标金额</label><input id="fgTarget" type="number" inputmode="decimal" placeholder="10000"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label>已存</label><input id="fgSaved" type="number" inputmode="decimal" placeholder="0"></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn-mini primary" id="fgAdd">添加</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🩺 财务体检 <span class="tag" id="fScoreTag"></span></h2>
+      <div style="display:flex;align-items:center;gap:16px">
+        <div class="score" id="fScore">—</div>
+        <div style="flex:1;font-size:12.5px;color:#5A6270;line-height:1.7" id="fScoreHint"></div>
+      </div>
+      <div id="fCheckList" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>📈 近 6 个月 <span class="tag">蓝=收入 · 橙=支出</span></h2>
+      <div class="chart" id="fChart"></div>
+    </div>
   <div class="tools" id="moneyTools">
     <button id="mExport" class="primary">导出 CSV</button>
     <button id="mCopy">复制 CSV</button>
@@ -408,71 +456,11 @@
 </div>
 
 <!-- ══════════ 财务 ══════════ -->
-<div class="view view--fin" id="v-fin">
-  <div class="wrap">
-    <div class="hero">
-      <h1>财务</h1>
-      <div class="stats four">
-        <div class="stat"><div class="k">本月收入</div><div class="v" id="fInc">¥0</div></div>
-        <div class="stat"><div class="k">本月支出</div><div class="v" id="fExp">¥0</div></div>
-        <div class="stat"><div class="k">储蓄率</div><div class="v" id="fRate">—</div></div>
-        <div class="stat"><div class="k">净资产</div><div class="v" id="fNet">¥0</div></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>📊 分类预算 <span class="tag" id="fBudgetTag">本月</span></h2>
-      <div id="fBudgetList"></div>
-    </div>
-
-    <div class="card">
-      <h2>🏦 资产与负债 <span class="tag" id="fNetTag"></span></h2>
-      <div id="fAssetList"></div>
-      <div class="row" style="margin-top:10px">
-        <div><label>名称</label><input id="faName" placeholder="银行卡 / 花呗"></div>
-        <div><label>金额</label><input id="faAmt" type="number" inputmode="decimal" placeholder="0"></div>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <div><label>类型</label><select id="faKind"><option>资产</option><option>负债</option></select></div>
-        <div style="display:flex;align-items:flex-end"><button class="btn-mini primary" id="faAdd">添加</button></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>🎯 攒钱目标 <span class="tag" id="fGoalTag">0 个</span></h2>
-      <div id="fGoalList"></div>
-      <div class="row" style="margin-top:10px">
-        <div><label>目标名</label><input id="fgName" placeholder="应急金"></div>
-        <div><label>目标金额</label><input id="fgTarget" type="number" inputmode="decimal" placeholder="10000"></div>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <div><label>已存</label><input id="fgSaved" type="number" inputmode="decimal" placeholder="0"></div>
-        <div style="display:flex;align-items:flex-end"><button class="btn-mini primary" id="fgAdd">添加</button></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>🩺 财务体检 <span class="tag" id="fScoreTag"></span></h2>
-      <div style="display:flex;align-items:center;gap:16px">
-        <div class="score" id="fScore">—</div>
-        <div style="flex:1;font-size:12.5px;color:#5A6270;line-height:1.7" id="fScoreHint"></div>
-      </div>
-      <div id="fCheckList" style="margin-top:10px"></div>
-    </div>
-
-    <div class="card">
-      <h2>📈 近 6 个月 <span class="tag">蓝=收入 · 橙=支出</span></h2>
-      <div class="chart" id="fChart"></div>
-    </div>
-  </div>
-</div>
-
 <nav class="tabbar">
   <button class="on" data-view="home"><span class="ic">🏠</span>概览</button>
   <button data-view="money"><span class="ic">💰</span>记账</button>
   <button data-view="health"><span class="ic">🌙</span>健康</button>
   <button data-view="gym"><span class="ic">💪</span>健身</button>
-  <button data-view="fin"><span class="ic">💹</span>财务</button>
 </nav>
 
 <input type="file" id="mFile" accept=".csv,text/csv" style="display:none">
@@ -1099,7 +1087,7 @@ function zipStore(files){
   }
 
   // ══════════ 视图切换 ══════════
-  var VIEWS = {home:'v-home', money:'v-money', health:'v-health', gym:'v-gym', fin:'v-fin'};
+  var VIEWS = {home:'v-home', money:'v-money', health:'v-health', gym:'v-gym'};
   var current = 'home';
   function show(name){
     current = name;
@@ -1108,7 +1096,7 @@ function zipStore(files){
     window.scrollTo(0, 0);
     if (name === 'home') renderHome();
     if (name === 'gym') renderGymStats();
-    if (name === 'fin') renderFin();
+    if (name === 'money') renderFin();
   }
   document.querySelectorAll('.tabbar button').forEach(function(b){
     b.onclick = function(){ show(b.dataset.view); };
@@ -1961,12 +1949,12 @@ function zipStore(files){
   }
 
   function renderFin(){
+    if (!$('fBudgetList')) return;
     var s = moneySummarize(mstate.records, fMonth());
-    $('fInc').textContent = '¥' + s.income;
-    $('fExp').textContent = '¥' + s.expense;
-    var rate = s.income > 0 ? Math.round((s.income - s.expense) / s.income * 100) : 0;
-    $('fRate').textContent = s.income > 0 ? rate + '%' : '—';
-    $('fNet').textContent = '¥' + fNetWorth().net;
+    if ($('fRate')){
+      var rate = s.income > 0 ? Math.round((s.income - s.expense) / s.income * 100) : 0;
+      $('fRate').textContent = s.income > 0 ? rate + '%' : '—';
+    }
     fRenderBudgets(); fRenderAssets(); fRenderGoals(); fRenderCheck(); fRenderChart();
   }
 
