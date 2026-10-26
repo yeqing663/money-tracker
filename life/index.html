@@ -288,6 +288,7 @@
       <button class="btn ghost" id="importBackup" style="margin-bottom:8px">恢复备份 JSON</button>
       <input type="file" id="importFile" accept=".json,application/json" hidden>
       <button class="btn ghost" id="syncFinance" style="margin-bottom:8px">同步「随手记」账单</button>
+      <button class="btn ghost" id="forceUpdate" style="margin-bottom:8px">强制更新到最新版</button>
       <button class="btn danger" id="clearAll">清空全部数据</button>
       <p class="hint">导出文件包含所有记录与财务数据，请妥善保存。</p>
     </section>
@@ -2176,6 +2177,23 @@ if (typeof module !== 'undefined' && module.exports){
     }
   });
 
+  // 强制更新：注销 Service Worker + 清空缓存 + 带时间戳重新加载
+  $('forceUpdate').onclick = function(){
+    toast('正在清理缓存…');
+    var done = function(){ window.location.replace(window.location.pathname + '?v=' + Date.now()); };
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations){
+      navigator.serviceWorker.getRegistrations().then(function(regs){
+        return Promise.all(regs.map(function(r){ return r.unregister(); }));
+      }).then(function(){
+        return window.caches ? caches.keys() : Promise.resolve([]);
+      }).then(function(keys){
+        return Promise.all(keys.map(function(k){ return caches.delete(k); }));
+      }).then(done).catch(done);
+    } else {
+      done();
+    }
+  };
+
   // ══════════ 启动 ══════════
   state.doc = loadDoc();
   state.fin = loadFin();
@@ -2184,7 +2202,7 @@ if (typeof module !== 'undefined' && module.exports){
   window.__life = { state: state, renderHome: renderHome, renderModules: renderModules, renderReview: renderReview, openPanel: openPanel };
 
   // 版本号展示（方便确认是否是新版）
-  var APP_VERSION = 'v1.3';
+  var APP_VERSION = 'v1.4';
   if (document.getElementById('appVer')){
     document.getElementById('appVer').textContent = '当前版本 ' + APP_VERSION;
   }
