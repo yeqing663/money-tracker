@@ -154,7 +154,15 @@
     font-size:20px;font-family:inherit;line-height:1.2}
   .mood.on{background:var(--primary-soft);border-color:var(--primary)}
   .photo-thumb{width:64px;height:64px;border-radius:10px;object-fit:cover;border:1px solid var(--line)}
-  .hint{font-size:12px;color:var(--sub);line-height:1.6;margin:6px 0 0}
+  .remind-bar{position:sticky;top:56px;z-index:19;display:flex;align-items:center;gap:8px;
+    background:linear-gradient(90deg,#EDF1FF,#F3F0FF);border:1px solid #D9E1FF;border-radius:14px;
+    padding:9px 12px;margin:0 0 10px;font-size:12.5px;color:#2C3A66}
+  .remind-bar[hidden]{display:none}
+  .rb-emoji{font-size:15px}
+  .rb-text{flex:1;line-height:1.4}
+  .rb-btn{border:0;background:var(--primary);color:#fff;border-radius:9px;padding:6px 10px;
+    font-size:12px;font-family:inherit;font-weight:600}
+  .rb-later{border:0;background:transparent;color:#5A6A99;font-size:12px;font-family:inherit;padding:6px 2px}  .hint{font-size:12px;color:var(--sub);line-height:1.6;margin:6px 0 0}
   .pie-wrap{display:flex;gap:14px;align-items:center;margin-top:4px}
   .pie{width:112px;height:112px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.04)}
   .pie-legend{flex:1;min-width:0}
@@ -180,6 +188,8 @@
     .heat .cell.l3{background:#5A76C4}
     .heat .cell.l4{background:#7C93FF}
     .bar{background:#252D3D}
+    .remind-bar{background:linear-gradient(90deg,#1E2740,#241F3D);border-color:#2E3A5C;color:#C9D3F0}
+    .rb-later{color:#9FB0DD}
     .modal-bg{background:rgba(0,0,0,.6)}
     .dialog{background:#1C2330}
   }
@@ -194,7 +204,12 @@
     </div>
     <div class="streak" id="streakTag">连续 0 天</div>
   </header>
-
+  <div class="remind-bar" id="remindBar" hidden>
+    <span class="rb-emoji">📝</span>
+    <span class="rb-text" id="rbText">今天还没记录，花 10 秒记一笔？</span>
+    <button class="rb-btn" id="rbAdd">去记录</button>
+    <button class="rb-later" id="rbLater">稍后</button>
+  </div>
   <!-- ═══ 今日 ═══ -->
   <main class="view" id="v-home">
     <section class="card">
@@ -291,6 +306,17 @@
       <button class="btn primary" id="meSave" style="margin-top:12px">保存</button>
     </section>
     <section class="card">
+      <div class="card-head"><h2>记录提醒</h2><span class="tag">页面横栏</span></div>
+      <div class="row" style="justify-content:space-between">
+        <span style="font-size:13.5px">开启提醒</span>
+        <input type="checkbox" id="meRemind" style="width:auto;accent-color:var(--primary)">
+      </div>
+      <label style="font-size:12.5px;color:var(--sub);display:block;margin-top:10px">每天提醒时间</label>
+      <input class="input" id="meRemindTime" type="time" style="margin-top:6px">
+      <button class="btn ghost" id="meRemindPreview" style="margin-top:10px">预览提醒横栏</button>
+      <p class="hint">到设定时间且今天还没有任何记录时，页面顶部会出现提醒横栏；点「稍后」当天不再提醒。</p>
+    </section>
+    <section class="card">
       <div class="card-head"><h2>数据</h2></div>
       <button class="btn ghost" id="exportBackup" style="margin-bottom:8px">导出备份 JSON</button>
       <button class="btn ghost" id="importBackup" style="margin-bottom:8px">恢复备份 JSON</button>
@@ -314,7 +340,7 @@
         <a href="https://yeqing663.github.io/money-tracker/finance/" target="_blank" rel="noopener">打开「随手记」详细记账 →</a><br>
         <a href="https://yeqing663.github.io/money-tracker/" target="_blank" rel="noopener">打开「我的记录」看板 →</a>
       </p>
-      <p class="hint">生活 App 版本 v1.3 · 纯本地存储，不上传、不联网。<br><span id="appVer" style="color:var(--sub)"></span></p>
+      <p class="hint">生活 App 版本 v1.6 · 纯本地存储，不上传、不联网。<br><span id="appVer" style="color:var(--sub)"></span></p>
     </section>
   </main>
 </div>
@@ -415,6 +441,7 @@ function defaultDoc(){
     plan: null,        // 训练计划 { goal, days, place, weekly, ... }
     diet: null,        // 饮食计划 { goal, weight, kcal, ... }
     sessions: [],      // 训练打卡 { id, date, focus, minutes, exercises, doneCount, totalCount }
+    remind: null,      // 记录提醒 { enabled, time, snoozeDate }
   };
 }
 function normalizeDoc(raw){
@@ -432,6 +459,13 @@ function normalizeDoc(raw){
   }
   if (raw.plan && typeof raw.plan === 'object' && Array.isArray(raw.plan.weekly)) d.plan = raw.plan;
   if (raw.diet && typeof raw.diet === 'object' && Array.isArray(raw.diet.meals)) d.diet = raw.diet;
+  if (raw.remind && typeof raw.remind === 'object'){
+    d.remind = {
+      enabled: raw.remind.enabled !== false,
+      time: /^\d{2}:\d{2}$/.test(raw.remind.time || '') ? raw.remind.time : '20:00',
+      snoozeDate: /^\d{4}-\d{2}-\d{2}$/.test(raw.remind.snoozeDate || '') ? raw.remind.snoozeDate : '',
+    };
+  }
   d.v = 1;
   return d;
 }
@@ -966,6 +1000,48 @@ function weightAdvice(doc, days, endDate){
   return { change: ch, goal: goal, text: text };
 }
 
+// ══════════ 记录提醒 ══════════
+var REMIND_DEFAULT = { enabled: true, time: '20:00', snoozeDate: '' };
+
+/** 今天记录了几类（健康/待办/习惯/日记/运动/账单） */
+function recordCountToday(doc, finRecords, date){
+  date = date || todayStr();
+  var n = 0;
+  var h = getHealth(doc, date);
+  if (h.sleep !== null || h.water !== null || h.weight !== null) n++;
+  if (getTodos(doc, date).length) n++;
+  if (doc.habits.some(function(x){ return habitDone(doc, x.id, date); })) n++;
+  if (doc.journal.some(function(j){ return j.date === date; })) n++;
+  if (doc.workouts.some(function(w){ return w.date === date; }) ||
+      (doc.sessions || []).some(function(s){ return s.date === date; })) n++;
+  if ((finRecords || []).some(function(r){ return r.date === date; })) n++;
+  return n;
+}
+
+/**
+ * 是否该显示提醒横栏
+ * @returns {{show:boolean, reason:string, time:string, count:number}}
+ */
+function shouldRemind(doc, finRecords, now){
+  var r = Object.assign({}, REMIND_DEFAULT, doc.remind || {});
+  if (r.enabled === false) return { show: false, reason: 'off', time: r.time, count: 0 };
+  var today = todayStr();
+  if (r.snoozeDate === today) return { show: false, reason: 'snoozed', time: r.time, count: 0 };
+  var count = recordCountToday(doc, finRecords, today);
+  if (count > 0) return { show: false, reason: 'done', time: r.time, count: count };
+  var d = now || new Date();
+  var hhmm = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  var time = r.time || '20:00';
+  if (hhmm < time) return { show: false, reason: 'early', time: time, count: 0 };
+  return { show: true, reason: 'need', time: time, count: 0 };
+}
+
+/** 今天不再提醒 */
+function snoozeRemind(doc){
+  doc.remind = Object.assign({}, REMIND_DEFAULT, doc.remind || {}, { snoozeDate: todayStr() });
+  return doc.remind;
+}
+
 // ══════════ 回顾 ══════════
 /** 近 N 天每日汇总（用于趋势与日历） */
 function reviewRange(doc, finRecords, days, endDate){
@@ -1070,6 +1146,7 @@ if (typeof module !== 'undefined' && module.exports){
     splitFor, trainPlan, dietPlan, planToText, todayTraining, weekdayIndex,
     saveSession, sessionsIn, sessionOf, weekPlanProgress, sessionStreak,
     weightSeries, weightChange, weightAvg, weightAdvice,
+    REMIND_DEFAULT, recordCountToday, shouldRemind, snoozeRemind,
     reviewRange, recordStreak, monthStats, buildBackup, parseBackup,
   };
 }
@@ -1203,6 +1280,24 @@ if (typeof module !== 'undefined' && module.exports){
       '<p class="hint">本月支出合计 ' + fmtMoney(total) + ' · 共 ' + items.length + ' 类</p>';
   }
 
+  // ══════════ 记录提醒横栏 ══════════
+  var remindPreviewUntil = 0;
+  function updateRemindBar(force){
+    var bar = $('remindBar');
+    if (!bar) return;
+    var r = shouldRemind(state.doc, state.fin);
+    var show = !!force || r.show || Date.now() < remindPreviewUntil;
+    bar.hidden = !show;
+    if (show){
+      var txt = $('rbText');
+      if (txt){
+        txt.textContent = r.show
+          ? (r.time ? '今天还没记录（' + r.time + ' 提醒）' : '今天还没记录') + '，花 10 秒记一笔？'
+          : '这是提醒横栏的预览，到点且没记录时会真的出现。';
+      }
+    }
+  }
+
   // ══════════ 存储 ══════════
   function loadDoc(){
     try { return normalizeDoc(JSON.parse(localStorage.getItem(LIFE_KEY) || 'null')); }
@@ -1226,6 +1321,7 @@ if (typeof module !== 'undefined' && module.exports){
     if (v === 'modules') renderModules();
     if (v === 'review') renderReview();
     if (v === 'me') renderMe();
+    updateRemindBar();
     window.scrollTo(0, 0);
   }
 
@@ -1497,6 +1593,19 @@ if (typeof module !== 'undefined' && module.exports){
   function renderMe(){
     $('meName').value = state.doc.profile.name;
     $('meStart').value = state.doc.profile.start;
+    var r = Object.assign({}, REMIND_DEFAULT, state.doc.remind || {});
+    if ($('meRemind')) $('meRemind').checked = r.enabled !== false;
+    if ($('meRemindTime')) $('meRemindTime').value = r.time || '20:00';
+  }
+  function saveRemindSettings(){
+    var cur = state.doc.remind || {};
+    state.doc.remind = {
+      enabled: $('meRemind').checked,
+      time: $('meRemindTime').value || '20:00',
+      snoozeDate: cur.snoozeDate || '',
+    };
+    saveDoc();
+    updateRemindBar();
   }
 
   // ══════════ 面板框架 ══════════
@@ -1518,6 +1627,7 @@ if (typeof module !== 'undefined' && module.exports){
     $('panel').hidden = true;
     document.body.style.overflow = '';
     renderHome(); renderModules(); renderReview();
+    updateRemindBar();
   }
   function renderPanel(){
     var key = state.panel;
@@ -2169,6 +2279,27 @@ if (typeof module !== 'undefined' && module.exports){
     if (/^\d{4}-\d{2}-\d{2}$/.test($('meStart').value)) state.doc.profile.start = $('meStart').value;
     saveDoc(); renderMe(); toast('已保存');
   };
+  // 记录提醒设置
+  if ($('meRemind')) $('meRemind').onchange = function(){ saveRemindSettings(); toast($('meRemind').checked ? '已开启提醒' : '已关闭提醒'); };
+  if ($('meRemindTime')) $('meRemindTime').onchange = function(){ saveRemindSettings(); toast('提醒时间已设为 ' + $('meRemindTime').value); };
+  if ($('meRemindPreview')){
+    $('meRemindPreview').onclick = function(){
+      remindPreviewUntil = Date.now() + 8000;
+      updateRemindBar(true);
+      switchView('home');
+      toast('提醒已显示，8 秒后自动消失');
+    };
+  }
+  $('rbAdd').onclick = function(){
+    updateRemindBar();
+    openPanel('finance');
+  };
+  $('rbLater').onclick = function(){
+    snoozeRemind(state.doc);
+    saveDoc();
+    updateRemindBar();
+    toast('今天不再提醒');
+  };
   $('exportBackup').onclick = function(){
     download('生活备份_' + todayStr().replace(/-/g, '') + '.json', buildBackup(state.doc, state.fin));
     toast('备份已导出');
@@ -2235,10 +2366,10 @@ if (typeof module !== 'undefined' && module.exports){
   state.fin = loadFin();
   renderHome(); renderModules(); renderModules(); renderReview(); renderMe();
   switchView('home');
-  window.__life = { state: state, renderHome: renderHome, renderModules: renderModules, renderReview: renderReview, openPanel: openPanel };
+  window.__life = { state: state, renderHome: renderHome, renderModules: renderModules, renderReview: renderReview, openPanel: openPanel, updateRemindBar: updateRemindBar };
 
   // 版本号展示（方便确认是否是新版）
-  var APP_VERSION = 'v1.5';
+  var APP_VERSION = 'v1.6';
   if (document.getElementById('appVer')){
     document.getElementById('appVer').textContent = '当前版本 ' + APP_VERSION;
   }
