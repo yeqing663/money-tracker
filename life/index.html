@@ -155,6 +155,14 @@
   .mood.on{background:var(--primary-soft);border-color:var(--primary)}
   .photo-thumb{width:64px;height:64px;border-radius:10px;object-fit:cover;border:1px solid var(--line)}
   .hint{font-size:12px;color:var(--sub);line-height:1.6;margin:6px 0 0}
+  .pie-wrap{display:flex;gap:14px;align-items:center;margin-top:4px}
+  .pie{width:112px;height:112px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.04)}
+  .pie-legend{flex:1;min-width:0}
+  .pie-row{display:flex;align-items:center;gap:6px;font-size:12.5px;padding:3px 0;color:var(--ink)}
+  .pie-row i{width:9px;height:9px;border-radius:3px;flex:none}
+  .pie-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pie-pct{font-weight:700;font-variant-numeric:tabular-nums;flex:none}
+  .pie-amt{color:var(--sub);font-size:11.5px;flex:none;font-variant-numeric:tabular-nums}
   .linkline{font-size:12.5px;color:var(--sub)}
   .linkline a{color:var(--primary);text-decoration:none}
   @media (prefers-color-scheme: dark){
@@ -1169,6 +1177,32 @@ if (typeof module !== 'undefined' && module.exports){
       '<span>' + series[series.length - 1].date.slice(5) + ' · ' + series[series.length - 1].weight + 'kg</span></div>';
   }
 
+  function pieChartHtml(items){
+    items = items || [];
+    var total = items.reduce(function(a, x){ return a + x.amount; }, 0);
+    if (!total){
+      return '<div class="empty"><span class="big">🥧</span>本月还没有支出记录，记一笔就能看到占比。</div>';
+    }
+    var COLORS = ['#4C6FFF', '#12A06A', '#E08A4B', '#E23D3D', '#8E6C88', '#5A6270', '#A0642B', '#7A5C3A', '#1E7B45'];
+    var acc = 0, stops = [];
+    items.forEach(function(x, i){
+      var from = acc / total * 100;
+      acc += x.amount;
+      var to = acc / total * 100;
+      stops.push(COLORS[i % COLORS.length] + ' ' + from.toFixed(2) + '% ' + to.toFixed(2) + '%');
+    });
+    var legend = items.map(function(x, i){
+      var pct = Math.round(x.amount / total * 1000) / 10;
+      return '<div class="pie-row"><i style="background:' + COLORS[i % COLORS.length] + '"></i>' +
+        '<span class="pie-name">' + esc(x.category) + '</span>' +
+        '<span class="pie-pct">' + pct + '%</span>' +
+        '<span class="pie-amt">' + fmtMoney(x.amount) + '</span></div>';
+    }).join('');
+    return '<div class="pie-wrap"><div class="pie" style="background:conic-gradient(' + stops.join(',') + ')"></div>' +
+      '<div class="pie-legend">' + legend + '</div></div>' +
+      '<p class="hint">本月支出合计 ' + fmtMoney(total) + ' · 共 ' + items.length + ' 类</p>';
+  }
+
   // ══════════ 存储 ══════════
   function loadDoc(){
     try { return normalizeDoc(JSON.parse(localStorage.getItem(LIFE_KEY) || 'null')); }
@@ -1521,6 +1555,8 @@ if (typeof module !== 'undefined' && module.exports){
       '<input class="input" id="pFinNote" maxlength="40" placeholder="例如 午饭" style="margin:6px 0 12px">' +
       '<button class="btn primary" id="pFinSave">保存</button>' +
       '</div>' +
+      '<div class="card"><div class="card-head"><h2>🥧 支出占比</h2><span class="tag">本月</span></div>' +
+      '<div id="pFinPie">' + pieChartHtml(financeByCat(state.fin, month)) + '</div></div>' +
       '<div class="card"><div class="card-head"><h2>最近记录</h2><span class="tag">点 ✕ 删除</span></div>' +
       '<div id="pFinList"></div></div>';
 
